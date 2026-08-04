@@ -16,6 +16,7 @@ from urllib.parse import quote
 from prettytable import PrettyTable
 
 from filescanio.errors import Unrepresentable
+from filescanio.scanreport import render_report
 from filescanio.scanreport.model import (
     reports_of,
     signal_groups,
@@ -49,6 +50,7 @@ class Format(StrEnum):
     JSON = "json"
     TOON = "toon"
     SARIF = "sarif"
+    REPORT = "report"
 
 
 def render_json(value: Any, *, compact: bool = False) -> str:
@@ -421,6 +423,7 @@ RENDERERS = {
     Format.TABLE: render_table,
     Format.TOON: render_toon,
     Format.SARIF: render_sarif,
+    Format.REPORT: render_report,
 }
 
 

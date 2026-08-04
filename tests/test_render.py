@@ -507,3 +507,4 @@ def test_render_dispatches_to_each_format() -> None:
     assert "| field | value |" in render({"a": 1}, Format.TABLE)
     assert render({"a": 1}, Format.TOON) == "a: 1"
     assert '"version": "2.1.0"' in render(MALICIOUS_REPORT, Format.SARIF)
+    assert "Verdict" in render(MALICIOUS_REPORT, Format.REPORT)

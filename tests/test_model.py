@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from filescanio.scanreport.model import (
+    ScanReport,
     reports_of,
     signal_groups,
     strength,
@@ -75,3 +76,19 @@ def test_verdict_of(report: dict[str, Any], expected: str) -> None:
 )
 def test_threat_level(report: dict[str, Any], expected: float | None) -> None:
     assert threat_level(report) == expected
+
+
+FILE_RESOURCE = {"resourceReference": {"name": "file"}, "fileSize": 10}
+
+
+@pytest.mark.parametrize(
+    ("report", "expected"),
+    [
+        ({"resources": {"a": "junk", "b": FILE_RESOURCE}}, FILE_RESOURCE),
+        ({"resources": {"a": {"resourceReference": {"name": "osint"}}}}, {}),
+        ({"resources": "junk"}, {}),
+        ({}, {}),
+    ],
+)
+def test_resource_lookup(report: dict[str, Any], expected: dict[str, Any]) -> None:
+    assert ScanReport(flow={}, report=report).resource("file") == expected
