@@ -7,10 +7,9 @@ import sys
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from filescanio import __version__
-from filescanio.client import FileScanClient
 from filescanio.config import (
     DEFAULT_BASE_URL,
     load_settings,
@@ -40,7 +39,10 @@ from filescanio.transport import (
     is_usable_timeout,
 )
 
-ClientHandler = Callable[[FileScanClient, argparse.Namespace], Any]
+if TYPE_CHECKING:
+    from filescanio.client import FileScanClient
+
+ClientHandler = Callable[["FileScanClient", argparse.Namespace], Any]
 LocalHandler = Callable[[argparse.Namespace], Any]
 
 # Search field filters that take free text; the wire name is the flag name
@@ -1004,6 +1006,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 local_handler(args), fmt=args.format, raw=args.raw, output=args.output
             )
             return 0
+        from filescanio.client import FileScanClient
+
         with FileScanClient(
             api_key=args.api_key,
             base_url=args.base_url,
