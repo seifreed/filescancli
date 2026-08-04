@@ -24,7 +24,7 @@ from filescanio.errors import (
     describe,
 )
 from filescanio.groups._base import ReportView
-from filescanio.groups.scan import ScanOptions
+from filescanio.groups.scan import DEFAULT_WORKERS, ScanOptions
 from filescanio.render import Format, Unrepresentable, render, render_json
 from filescanio.transport import (
     BAD_RETRIES,
@@ -141,6 +141,12 @@ def _add_scan_options(parser: argparse.ArgumentParser) -> None:
         "--wait", action="store_true", help="Poll until the report is finished"
     )
     parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Samples submitted at once (default: {DEFAULT_WORKERS})",
+    )
+    parser.add_argument(
         "--wait-timeout",
         type=_positive_timeout,
         default=600.0,
@@ -193,8 +199,22 @@ def _finish_scan(
     )
 
 
+def _batch_entry(
+    client: FileScanClient, args: argparse.Namespace, response: Any
+) -> Any:
+    """Render one sample's outcome, so a failure cannot break the report."""
+    if isinstance(response, FileScanError):
+        return {"error": str(response)}
+    return _finish_scan(client, args, response)
+
+
 def _handle_scan_file(client: FileScanClient, args: argparse.Namespace) -> Any:
-    return _finish_scan(client, args, client.scan.file(args.path, **_scan_kwargs(args)))
+    """One path keeps the single-response shape; several return a list."""
+    options = _scan_kwargs(args)
+    if len(args.path) == 1:
+        return _finish_scan(client, args, client.scan.file(args.path[0], **options))
+    responses = client.scan.files(args.path, max_workers=args.max_workers, **options)
+    return [_batch_entry(client, args, response) for response in responses]
 
 
 def _handle_scan_url(client: FileScanClient, args: argparse.Namespace) -> Any:
@@ -487,7 +507,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan = _subparser(commands, "scan", help="Submit files or URLs for scanning")
     scan_sub = scan.add_subparsers(dest="subcommand", required=True)
     scan_file = _subparser(scan_sub, "file", help="Scan a local file")
-    scan_file.add_argument("path")
+    scan_file.add_argument("path", nargs="+")
     _add_scan_options(scan_file)
     scan_file.set_defaults(handler=_handle_scan_file)
     scan_url = _subparser(scan_sub, "url", help="Scan a URL")

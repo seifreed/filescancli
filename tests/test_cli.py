@@ -1091,3 +1091,40 @@ def test_report_download_returns_raw_bytes(
 ) -> None:
     echo = run_echo(api_server, capsys, "report-download", "r1")
     assert echo["path"] == "/api/reports/r1/download"
+
+
+def test_scan_file_submits_a_batch(
+    api_server: str, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    samples = []
+    for index in range(2):
+        sample = tmp_path / f"b{index}.bin"
+        sample.write_text(f"batch-{index}")
+        samples.append(str(sample))
+    assert run(api_server, "scan", "file", *samples, "--max-workers", "2") == 0
+    echoes = json.loads(capsys.readouterr().out)
+    assert [echo["path"] for echo in echoes] == ["/api/scan/file"] * 2
+
+
+def test_a_failed_sample_is_reported_without_waiting_on_it(
+    flow_server: str, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """--wait must skip the failure rather than look for a flow id in it."""
+    good = tmp_path / "good.bin"
+    good.write_text("fine")
+    assert (
+        run(
+            flow_server,
+            "scan",
+            "file",
+            str(good),
+            str(tmp_path / "gone.bin"),
+            "--wait",
+            "--wait-interval",
+            "0.01",
+        )
+        == 0
+    )
+    results = json.loads(capsys.readouterr().out)
+    assert results[0] == {"allFinished": True}
+    assert "Cannot read" in results[1]["error"]

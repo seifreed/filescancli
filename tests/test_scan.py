@@ -392,3 +392,43 @@ def test_rejections_before_the_flow_finishes_do_not_abort_it() -> None:
         pytest.raises(FileScanError, match="Timed out"),
     ):
         scan.wait_for_report("flow-17", interval=0.01, timeout=0.2)
+
+
+def test_files_submits_the_whole_batch_in_order(
+    client: FileScanClient, tmp_path: Path
+) -> None:
+    samples = []
+    for index in range(3):
+        sample = tmp_path / f"s{index}.bin"
+        sample.write_text(f"payload-{index}")
+        samples.append(sample)
+    echoes = client.scan.files(samples, max_workers=3)
+    assert [f'filename="s{i}.bin"' in echoes[i]["body"] for i in range(3)] == [True] * 3
+
+
+def test_a_failing_sample_does_not_lose_the_rest(
+    client: FileScanClient, tmp_path: Path
+) -> None:
+    good = tmp_path / "good.bin"
+    good.write_text("fine")
+    results = client.scan.files([good, tmp_path / "missing.bin"], max_workers=2)
+    assert results[0]["path"] == "/api/scan/file"
+    assert isinstance(results[1], FileScanError)
+
+
+def test_wait_for_reports_waits_on_every_flow() -> None:
+    with scanning(report_server({"allFinished": True})) as scan:
+        reports = scan.wait_for_reports(["a", "b"], interval=0.01, max_workers=2)
+    assert reports == [{"allFinished": True}, {"allFinished": True}]
+
+
+def test_an_empty_batch_is_not_an_error(client: FileScanClient) -> None:
+    assert client.scan.files([]) == []
+
+
+@pytest.mark.parametrize("workers", [0, -1, 33])
+def test_unusable_worker_counts_rejected(
+    client: FileScanClient, tmp_path: Path, workers: int
+) -> None:
+    with pytest.raises(FileScanError, match="max_workers"):
+        client.scan.files([tmp_path / "x.bin"], max_workers=workers)

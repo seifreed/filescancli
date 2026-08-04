@@ -2,6 +2,9 @@
 
 import math
 import time
+from collections.abc import Callable, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from typing import Any, TypedDict, Unpack
 
@@ -75,6 +78,29 @@ def _failure_reason(report: dict[str, Any]) -> str | None:
     return None
 
 
+DEFAULT_WORKERS = 4
+MAX_WORKERS = 32
+
+
+def _fan_out(calls: Sequence[Callable[[], Any]], max_workers: int) -> list[Any]:
+    """Run the calls concurrently, keeping order and every outcome."""
+    if max_workers < 1 or max_workers > MAX_WORKERS:
+        raise FileScanError(f"max_workers must be between 1 and {MAX_WORKERS}")
+    if not calls:
+        return []
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(calls))) as pool:
+        futures = [pool.submit(call) for call in calls]
+        return [_outcome(future) for future in futures]
+
+
+def _outcome(future: Future[Any]) -> Any:
+    """The result, or the failure itself so one bad sample keeps the batch."""
+    try:
+        return future.result()
+    except FileScanError as exc:
+        return exc
+
+
 class ScanGroup(ApiGroup):
     """Submit files or URLs for scanning and poll for the resulting reports."""
 
@@ -95,6 +121,47 @@ class ScanGroup(ApiGroup):
                 data=data,
                 files={"file": (file_path.name, handle)},
             )
+
+    def files(
+        self,
+        paths: Sequence[str | Path],
+        *,
+        max_workers: int = DEFAULT_WORKERS,
+        **options: Unpack[ScanOptions],
+    ) -> list[Any]:
+        """Submit several files at once, in the order they were given.
+
+        One sample failing must not lose the rest of the batch, so a failure
+        is returned in its slot as the exception rather than raised.
+        """
+        return _fan_out(
+            [partial(self.file, path, **options) for path in paths],
+            max_workers,
+        )
+
+    def wait_for_reports(
+        self,
+        flow_ids: Sequence[str],
+        *,
+        max_workers: int = DEFAULT_WORKERS,
+        interval: float = 5.0,
+        timeout: float = 600.0,
+        **view: Unpack[ReportView],
+    ) -> list[Any]:
+        """Wait on several flows at once, in the order they were given."""
+        return _fan_out(
+            [
+                partial(
+                    self.wait_for_report,
+                    flow,
+                    interval=interval,
+                    timeout=timeout,
+                    **view,
+                )
+                for flow in flow_ids
+            ],
+            max_workers,
+        )
 
     def url(self, url: str, **options: Unpack[ScanOptions]) -> Any:
         """Submit a URL for scanning."""
