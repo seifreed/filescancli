@@ -5,7 +5,9 @@ import json
 import os
 import re
 import sys
-from collections.abc import Callable, Sequence
+import threading
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -310,14 +312,20 @@ def _batch_entry(
 def _handle_scan_file(client: FileScanClient, args: argparse.Namespace) -> Any:
     """One path keeps the single-response shape; several return a list."""
     options = _scan_kwargs(args)
-    if len(args.path) == 1:
-        return _finish_scan(client, args, client.scan.file(args.path[0], **options))
-    responses = client.scan.files(args.path, max_workers=args.max_workers, **options)
-    return [_batch_entry(client, args, response) for response in responses]
+    with _spinning("scanning"):
+        if len(args.path) == 1:
+            return _finish_scan(client, args, client.scan.file(args.path[0], **options))
+        responses = client.scan.files(
+            args.path, max_workers=args.max_workers, **options
+        )
+        return [_batch_entry(client, args, response) for response in responses]
 
 
 def _handle_scan_url(client: FileScanClient, args: argparse.Namespace) -> Any:
-    return _finish_scan(client, args, client.scan.url(args.url, **_scan_kwargs(args)))
+    with _spinning("scanning"):
+        return _finish_scan(
+            client, args, client.scan.url(args.url, **_scan_kwargs(args))
+        )
 
 
 def _handle_scan_report(client: FileScanClient, args: argparse.Namespace) -> Any:
@@ -920,6 +928,59 @@ def _wants_colour(stream: Any) -> bool:
     if "FORCE_COLOR" in os.environ:
         return True
     return bool(stream.isatty())
+
+
+SPINNER_FRAMES = "|/-\\"
+SPINNER_INTERVAL = 0.1
+
+
+class _Spinner:
+    """A one-line activity indicator on whatever stream it is handed."""
+
+    def __init__(
+        self, stream: Any, label: str, *, interval: float = SPINNER_INTERVAL
+    ) -> None:
+        self._stream = stream
+        self._label = label
+        self._interval = interval
+        self._halt = threading.Event()
+        self._thread = threading.Thread(target=self._spin, daemon=True)
+        self._turns = 0
+
+    def _write_frame(self) -> None:
+        frame = SPINNER_FRAMES[self._turns % len(SPINNER_FRAMES)]
+        self._turns += 1
+        self._stream.write(f"\r{frame} {self._label}")
+        self._stream.flush()
+
+    def _spin(self) -> None:
+        while not self._halt.wait(self._interval):
+            self._write_frame()
+
+    def start(self) -> None:
+        self._write_frame()
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._halt.set()
+        self._thread.join()
+        self._stream.write("\r" + " " * (len(self._label) + 2) + "\r")
+        self._stream.flush()
+
+
+@contextmanager
+def _spinning(label: str) -> Iterator[None]:
+    """Spin on stderr while the body runs, only when a person is watching."""
+    stderr = _stream("stderr")
+    if not _wants_colour(stderr):
+        yield
+        return
+    spinner = _Spinner(stderr, label)
+    spinner.start()
+    try:
+        yield
+    finally:
+        spinner.stop()
 
 
 def _payload(result: Any, fmt: Format, *, compact: bool) -> bytes:

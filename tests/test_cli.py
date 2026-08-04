@@ -5,6 +5,7 @@ import json
 import os
 import runpy
 import sys
+import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -14,7 +15,7 @@ from urllib.parse import parse_qs
 import pytest
 
 from filescanio import __version__
-from filescanio.cli import SIMPLE_COMMANDS, _colorize_report, _emit, main
+from filescanio.cli import SIMPLE_COMMANDS, _colorize_report, _emit, _Spinner, main
 from filescanio.config import DEFAULT_BASE_URL, write_config
 from filescanio.errors import FileScanError
 from filescanio.render import Format
@@ -1128,6 +1129,42 @@ def test_search_rejects_a_filetype_the_platform_does_not_index(
     with pytest.raises(SystemExit) as excinfo:
         run(api_server, "search", "--filetype", "nope")
     assert excinfo.value.code == 2
+
+
+def test_spinner_turns_and_cleans_its_line() -> None:
+    stream = io.StringIO()
+    spinner = _Spinner(stream, "busy", interval=0.02)
+    spinner.start()
+    time.sleep(0.1)
+    spinner.stop()
+    out = stream.getvalue()
+    assert "\r| busy" in out
+    assert "\r/ busy" in out
+    assert out.endswith("\r" + " " * 6 + "\r")
+
+
+def test_scan_shows_a_spinner_when_a_terminal_watches(
+    api_server: str, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    sample = tmp_path / "s.bin"
+    sample.write_bytes(b"x")
+    os.environ["FORCE_COLOR"] = "1"
+    try:
+        assert run(api_server, "scan", "file", str(sample)) == 0
+    finally:
+        del os.environ["FORCE_COLOR"]
+    err = capsys.readouterr().err
+    assert "\r| scanning" in err
+    assert err.endswith("\r")
+
+
+def test_scan_stays_silent_when_piped(
+    api_server: str, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    sample = tmp_path / "s.bin"
+    sample.write_bytes(b"x")
+    assert run(api_server, "scan", "file", str(sample)) == 0
+    assert "\r" not in capsys.readouterr().err
 
 
 REPORTISH = json.dumps(

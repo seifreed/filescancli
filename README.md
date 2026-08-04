@@ -176,7 +176,9 @@ redirected, so `filescan system info` is readable and
 
 `--format report` adds colour when stdout is a terminal, honouring the
 [`NO_COLOR` / `FORCE_COLOR`](https://no-color.org) conventions; pipes,
-redirections and `-o` files always receive plain text.
+redirections and `-o` files always receive plain text. `scan file` and
+`scan url` show a spinner on stderr under the same rules, so scripts stay
+completely silent.
 
 A format that cannot express a response falls back to JSON and says so on
 stderr — asking for a table of a nested scan report, or SARIF of
