@@ -4,13 +4,32 @@ build-backend = "hatchling.build"
 
 [project]
 name = "filescancli"
-version = "0.1.0"
+# The version lives in filescanio/__init__.py alone: a release bumps one
+# line, and `filescan --version` can never disagree with the wheel.
+dynamic = ["version"]
 description = "CLI and client library for the filescan.io API"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Marc Rivero" }]
 dependencies = ["httpx>=0.28", "prettytable>=3.18"]
+keywords = ["filescan", "malware", "sandbox", "threat-intelligence", "sarif"]
+# No "License ::" classifier: the SPDX `license` field above supersedes it
+# (PEP 639) and PyPI rejects a distribution that declares both.
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+]
 
 # Development tooling lives in this same file, never in a separate
 # requirements file; it must not be installed into a consumer's environment.
@@ -30,6 +49,11 @@ filescan = "filescanio.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/seifreed/filescancli"
+Repository = "https://github.com/seifreed/filescancli"
+Issues = "https://github.com/seifreed/filescancli/issues"
+
+[tool.hatch.version]
+path = "filescanio/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["filescanio"]

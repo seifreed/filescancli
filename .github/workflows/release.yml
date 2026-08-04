@@ -1,0 +1,56 @@
+# Publishes to PyPI through Trusted Publishing (OIDC): no API token is stored
+# anywhere. PyPI authorises this repository, this workflow file name and this
+# environment, so all three must match the publisher registered at
+# https://pypi.org/manage/account/publishing/.
+#
+# Every step runs a fixed command. No workflow input, event payload or other
+# untrusted value is interpolated into a run: block anywhere in this file.
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      # The gates already ran on main, but a release is built from a tag:
+      # this proves the exact revision being published is green.
+      - name: Install package and dependencies
+        run: pip install -e ".[dev]"
+      - name: pytest with the coverage gate
+        run: pytest
+      - name: Build the distributions
+        run: |
+          pip install build twine
+          python -m build
+      - name: Check the metadata PyPI will render
+        run: twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Mints the short-lived OIDC token Trusted Publishing exchanges for
+      # upload rights. Without it PyPI rejects the upload.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
