@@ -630,15 +630,7 @@ def _subparser(commands: Any, name: str, **kwargs: Any) -> argparse.ArgumentPars
     return subparser
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Build the argparse parser covering every API command."""
-    parser = argparse.ArgumentParser(
-        prog="filescan", description="CLI for the filescan.io API"
-    )
-    parser.add_argument("--version", action="version", version=__version__)
-    _add_global_options(parser)
-    commands = parser.add_subparsers(dest="command", required=True)
-
+def _config_commands(commands: Any) -> None:
     config = _subparser(commands, "config", help="Manage local configuration")
     config_sub = config.add_subparsers(dest="subcommand", required=True)
     config_init = _subparser(config_sub, "init", help="Write the config file")
@@ -648,6 +640,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_config_path(config_show)
     config_show.set_defaults(local_handler=_handle_config_show)
 
+
+def _scan_commands(commands: Any) -> None:
     scan = _subparser(commands, "scan", help="Submit files or URLs for scanning")
     scan_sub = scan.add_subparsers(dest="subcommand", required=True)
     scan_file = _subparser(scan_sub, "file", help="Scan a local file")
@@ -663,6 +657,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_report_view_options(scan_report)
     scan_report.set_defaults(handler=_handle_scan_report)
 
+
+def _report_commands(commands: Any) -> None:
     report_download = _subparser(
         commands, "report-download", help="Download a full report (undocumented API)"
     )
@@ -674,13 +670,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Server-side export format; omitted, the default serialisation",
     )
     report_download.set_defaults(handler=_handle_report_download)
-
     report = _subparser(commands, "report", help="Get a specific report")
     report.add_argument("report_id")
     report.add_argument("file_hash")
     _add_report_view_options(report)
     report.set_defaults(handler=_handle_report)
 
+
+def _search_commands(commands: Any) -> None:
     search = _subparser(commands, "search", help="Search reports")
     search.add_argument("query", nargs="?")
     search.add_argument("--page", type=int)
@@ -691,7 +688,6 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--verdict", choices=VERDICTS)
     search.add_argument("--age", type=int, help="Only reports newer than this in days")
     search.set_defaults(handler=_handle_search)
-
     reports = _subparser(commands, "reports", help="Report collections")
     reports_sub = reports.add_subparsers(dest="subcommand", required=True)
     reports_public = _subparser(reports_sub, "public", help="Get public reports")
@@ -709,6 +705,8 @@ def build_parser() -> argparse.ArgumentParser:
     reports_matches.add_argument("--filter", action="append")
     reports_matches.set_defaults(handler=_handle_matches)
 
+
+def _files_commands(commands: Any) -> None:
     files = _subparser(commands, "files", help="File operations")
     files_sub = files.add_subparsers(dest="subcommand", required=True)
     availability = _subparser(
@@ -725,6 +723,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     files_download.set_defaults(handler=_handle_file_download)
 
+
+def _reputation_commands(commands: Any) -> None:
     similarity = _subparser(
         commands,
         "similarity",
@@ -735,7 +735,6 @@ def build_parser() -> argparse.ArgumentParser:
     similarity.add_argument("--verdict")
     similarity.add_argument("--tag", action="append")
     similarity.set_defaults(handler=_handle_similarity)
-
     reputation = _subparser(commands, "reputation", help="IOC reputation lookups")
     reputation_sub = reputation.add_subparsers(dest="subcommand", required=True)
     reputation_hash = _subparser(
@@ -754,6 +753,8 @@ def build_parser() -> argparse.ArgumentParser:
     reputation_ioc.add_argument("values", nargs="+")
     reputation_ioc.set_defaults(handler=_handle_reputation_ioc)
 
+
+def _threatintel_commands(commands: Any) -> None:
     threatintel = _subparser(commands, "threatintel", help="Threat intelligence")
     threatintel_sub = threatintel.add_subparsers(dest="subcommand", required=True)
     prevalence = _subparser(threatintel_sub, "prevalence", help="Get IOC prevalence")
@@ -790,6 +791,8 @@ def build_parser() -> argparse.ArgumentParser:
     similars.add_argument("--exclude-report-id", action="append")
     similars.set_defaults(handler=_handle_similars)
 
+
+def _system_commands(commands: Any) -> Any:
     system = _subparser(commands, "system", help="System information")
     system_sub = system.add_subparsers(dest="subcommand", required=True)
     terms = _subparser(system_sub, "terms", help="Get terms documents")
@@ -823,13 +826,19 @@ def build_parser() -> argparse.ArgumentParser:
     log_error = _subparser(system_sub, "log-error", help="Log a client error")
     _add_json_input(log_error)
     log_error.set_defaults(handler=_handle_log_error)
+    return system_sub
 
+
+def _users_commands(commands: Any) -> Any:
     users = _subparser(commands, "users", help="User data")
     users_sub = users.add_subparsers(dest="subcommand", required=True)
     avatar = _subparser(users_sub, "avatar", help="Download an account avatar")
     avatar.add_argument("account_id")
     avatar.set_defaults(handler=_handle_avatar)
+    return users_sub
 
+
+def _misc_commands(commands: Any) -> Any:
     misc = _subparser(commands, "misc", help="Miscellaneous endpoints")
     misc_sub = misc.add_subparsers(dest="subcommand", required=True)
     oauth = _subparser(
@@ -840,7 +849,12 @@ def build_parser() -> argparse.ArgumentParser:
     oauth.add_argument("--error")
     oauth.add_argument("--error-description")
     oauth.set_defaults(handler=_handle_oauth_callback)
+    return misc_sub
 
+
+def _simple_commands(
+    commands: Any, system_sub: Any, users_sub: Any, misc_sub: Any
+) -> None:
     subparser_groups = {
         "system": system_sub,
         "users": users_sub,
@@ -853,6 +867,28 @@ def build_parser() -> argparse.ArgumentParser:
         simple = _subparser(subparser_groups[group_name], command_name, help=help_text)
         simple.set_defaults(handler=_simple(func))
 
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the argparse parser covering every API command."""
+    parser = argparse.ArgumentParser(
+        prog="filescan", description="CLI for the filescan.io API"
+    )
+    parser.add_argument("--version", action="version", version=__version__)
+    _add_global_options(parser)
+    commands = parser.add_subparsers(dest="command", required=True)
+    _config_commands(commands)
+    _scan_commands(commands)
+    _report_commands(commands)
+    _search_commands(commands)
+    _files_commands(commands)
+    _reputation_commands(commands)
+    _threatintel_commands(commands)
+    _simple_commands(
+        commands,
+        _system_commands(commands),
+        _users_commands(commands),
+        _misc_commands(commands),
+    )
     return parser
 
 
