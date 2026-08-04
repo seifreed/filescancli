@@ -1,13 +1,18 @@
 """Tests for ReportsGroup against the echo server."""
 
+import itertools
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from typing import Any
 
 import pytest
 
 from filescanio.client import FileScanClient
-from tests.conftest import assert_get
+from filescanio.groups._base import PAGE_CEILING
+from filescanio.groups.reports import ReportsGroup
+from filescanio.http import Transport
+from tests.conftest import assert_get, json_server
 
 
 @pytest.mark.parametrize(
@@ -89,3 +94,56 @@ def test_search_matches_defaults(client: FileScanClient) -> None:
 def test_matches_filters_override_named_parameters(client: FileScanClient) -> None:
     echo = client.reports.search_matches(["r1"], method="or", filters={"method": "and"})
     assert echo["query"]["method"] == ["and"]
+
+
+def paged_server(*pages: list[dict[str, int]]) -> AbstractContextManager[str]:
+    """Serve one page of items per request, then an empty page forever."""
+    hits = itertools.count()
+    return json_server(
+        lambda _: (
+            200,
+            json.dumps(
+                {
+                    "items": pages[i] if (i := next(hits)) < len(pages) else [],
+                    "count": 0,
+                }
+            ).encode(),
+        )
+    )
+
+
+@contextmanager
+def paging(server: AbstractContextManager[str]) -> Iterator[ReportsGroup]:
+    with server as base_url, Transport(api_key="k", base_url=base_url) as transport:
+        yield ReportsGroup(transport)
+
+
+def test_search_pages_walks_until_a_short_page() -> None:
+    with paging(paged_server([{"id": 1}, {"id": 2}], [{"id": 3}])) as reports:
+        assert [item["id"] for item in reports.search_pages("x", page_size=2)] == [
+            1,
+            2,
+            3,
+        ]
+
+
+def test_public_pages_stops_on_an_empty_page() -> None:
+    with paging(paged_server([{"id": 1}, {"id": 2}])) as reports:
+        assert [item["id"] for item in reports.public_pages(page_size=2)] == [1, 2]
+
+
+def test_pages_stop_when_the_server_answers_with_no_items() -> None:
+    with paging(json_server(lambda _: (200, b'{"count": 0}'))) as reports:
+        assert list(reports.search_pages(page_size=5)) == []
+
+
+def test_pages_stop_when_the_server_answers_with_a_list() -> None:
+    with paging(json_server(lambda _: (200, b"[1, 2]"))) as reports:
+        assert list(reports.search_pages(page_size=5)) == []
+
+
+def test_the_page_ceiling_stops_a_server_that_never_runs_out() -> None:
+    """Every page is full, so only the ceiling ends the walk."""
+    endless = json_server(lambda _: (200, b'{"items": [{"id": 1}]}'))
+    with paging(endless) as reports:
+        assert len(list(reports.search_pages(page_size=1))) == PAGE_CEILING

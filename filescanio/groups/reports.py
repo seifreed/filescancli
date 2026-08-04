@@ -1,9 +1,15 @@
 """Report endpoints: fetch, search, and list scan reports."""
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Any, Unpack
 
-from filescanio.groups._base import ApiGroup, ReportView, segment, view_params
+from filescanio.groups._base import (
+    ApiGroup,
+    ReportView,
+    segment,
+    view_params,
+    walk_pages,
+)
 from filescanio.transport import QueryValue
 
 
@@ -36,6 +42,20 @@ class ReportsGroup(ApiGroup):
             "page_size": page_size,
         }
         return self._transport.request_json("GET", "/api/reports/search", params=params)
+
+    def search_pages(
+        self, query: str | None = None, *, page_size: int = 20
+    ) -> Iterator[Any]:
+        """Yield every matching report, walking the pages as it goes."""
+        return walk_pages(
+            lambda page: self.search(query, page=page, page_size=page_size), page_size
+        )
+
+    def public_pages(self, *, page_size: int = 20) -> Iterator[Any]:
+        """Yield every public report, walking the pages as it goes."""
+        return walk_pages(
+            lambda page: self.public(page=page, page_size=page_size), page_size
+        )
 
     def search_matches(
         self,

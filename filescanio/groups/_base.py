@@ -1,6 +1,7 @@
 """Shared base for endpoint groups."""
 
-from typing import TypedDict
+from collections.abc import Callable, Iterator, Mapping
+from typing import Any, TypedDict
 from urllib.parse import quote
 
 from filescanio.errors import FileScanError
@@ -37,6 +38,27 @@ def segment(value: str) -> str:
     if escaped and set(escaped) == {"."}:
         return escaped.replace(".", "%2E")
     return escaped
+
+
+PAGE_CEILING = 1000
+
+
+def walk_pages(
+    fetch: Callable[[int], Any], page_size: int, first_page: int = 1
+) -> Iterator[Any]:
+    """Yield the items of every page, stopping when the server runs out.
+
+    A short page is the last one. The ceiling stops a server that keeps
+    answering with a full page from looping forever.
+    """
+    for page in range(first_page, first_page + PAGE_CEILING):
+        payload = fetch(page)
+        items = payload.get("items") if isinstance(payload, Mapping) else None
+        if not isinstance(items, list) or not items:
+            return
+        yield from items
+        if len(items) < page_size:
+            return
 
 
 class ApiGroup:
