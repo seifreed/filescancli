@@ -3,13 +3,15 @@
 import math
 import time
 from collections.abc import Callable, Sequence
-from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
-from typing import Any, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 
 from filescanio.errors import FileScanError, describe
 from filescanio.groups._base import ApiGroup, ReportView, segment, view_params
+
+if TYPE_CHECKING:
+    from concurrent.futures import Future
 
 
 class ScanOptions(TypedDict, total=False):
@@ -88,6 +90,10 @@ def _fan_out(calls: Sequence[Callable[[], Any]], max_workers: int) -> list[Any]:
         raise FileScanError(f"max_workers must be between 1 and {MAX_WORKERS}")
     if not calls:
         return []
+    # Imported here: concurrent.futures drags in logging, and only a batch
+    # of more than one sample ever needs a pool.
+    from concurrent.futures import ThreadPoolExecutor
+
     with ThreadPoolExecutor(max_workers=min(max_workers, len(calls))) as pool:
         futures = [pool.submit(call) for call in calls]
         return [_outcome(future) for future in futures]
