@@ -1091,6 +1091,15 @@ def test_report_download_returns_raw_bytes(
 ) -> None:
     echo = run_echo(api_server, capsys, "report-download", "r1")
     assert echo["path"] == "/api/reports/r1/download"
+    assert echo["query"] == {}
+
+
+def test_report_download_exports_in_the_requested_format(
+    api_server: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    echo = run_echo(api_server, capsys, "report-download", "r1", "--as", "pdf")
+    assert echo["path"] == "/api/reports/r1/download"
+    assert echo["query"] == {"format": ["pdf"]}
 
 
 def test_scan_file_submits_a_batch(

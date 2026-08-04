@@ -45,6 +45,20 @@ from tests.conftest import assert_get, json_server
             id="search with pagination",
         ),
         pytest.param(
+            lambda client: json.loads(client.reports.download("r9")),
+            "/api/reports/r9/download",
+            {},
+            id="download default serialisation",
+        ),
+        pytest.param(
+            lambda client: json.loads(
+                client.reports.download("r9", export_format="misp")
+            ),
+            "/api/reports/r9/download",
+            {"format": ["misp"]},
+            id="download as misp",
+        ),
+        pytest.param(
             lambda client: client.reports.public(),
             "/api/reports",
             {},

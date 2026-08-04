@@ -335,7 +335,7 @@ def _handle_log_error(client: FileScanClient, args: argparse.Namespace) -> Any:
 
 
 def _handle_report_download(client: FileScanClient, args: argparse.Namespace) -> Any:
-    return client.reports.download(args.report_id)
+    return client.reports.download(args.report_id, export_format=args.export_format)
 
 
 def _handle_avatar(client: FileScanClient, args: argparse.Namespace) -> Any:
@@ -524,6 +524,12 @@ def build_parser() -> argparse.ArgumentParser:
         commands, "report-download", help="Download a full report (undocumented API)"
     )
     report_download.add_argument("report_id")
+    report_download.add_argument(
+        "--as",
+        dest="export_format",
+        choices=("misp", "stix", "html", "pdf"),
+        help="Server-side export format; omitted, the default serialisation",
+    )
     report_download.set_defaults(handler=_handle_report_download)
 
     report = _subparser(commands, "report", help="Get a specific report")

@@ -128,6 +128,7 @@ filescan report <report_id> <sha256> --filter general --filter allSignalGroups
 filescan search "mirai" --page-size 10       # query-only; use 'reports matches' for field filters
 filescan reports public --page 1
 filescan reports matches <report_id> --filter verdict=malicious
+filescan report-download <report_id> --as pdf -o report.pdf   # misp|stix|html|pdf
 filescan files availability <sha256> [<sha256> ...]
 filescan similarity <sha256> --min-similarity 80   # endpoint deprecated upstream
 filescan reputation hash <sha256> [<sha256> ...]      # bulk when several
