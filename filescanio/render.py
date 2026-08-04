@@ -15,6 +15,15 @@ from urllib.parse import quote
 
 from prettytable import PrettyTable
 
+from filescanio.errors import Unrepresentable
+from filescanio.scanreport.model import (
+    reports_of,
+    signal_groups,
+    strength,
+    threat_level,
+    verdict_of,
+)
+
 CELL_WIDTH = 60
 SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
 SARIF_VERSION = "2.1.0"
@@ -40,10 +49,6 @@ class Format(StrEnum):
     JSON = "json"
     TOON = "toon"
     SARIF = "sarif"
-
-
-class Unrepresentable(Exception):
-    """Raised when a format cannot express the value it was handed."""
 
 
 def render_json(value: Any, *, compact: bool = False) -> str:
@@ -295,45 +300,6 @@ def render_toon(value: Any) -> str:
     return "\n".join(_toon_lines(value, None, 0))
 
 
-def _reports_of(value: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    reports = value.get("reports")
-    if isinstance(reports, Mapping):
-        return [r for r in reports.values() if isinstance(r, Mapping)]
-    if isinstance(reports, Sequence) and not isinstance(reports, str):
-        return [r for r in reports if isinstance(r, Mapping)]
-    return []
-
-
-def _signal_groups(report: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    groups = report.get("allSignalGroups")
-    if isinstance(groups, Sequence) and not isinstance(groups, str):
-        return [g for g in groups if isinstance(g, Mapping)]
-    return []
-
-
-def _strength(group: Mapping[str, Any]) -> float:
-    try:
-        return float(str(group.get("strength", "")))
-    except ValueError:
-        return 0.0
-
-
-def _verdict_of(report: Mapping[str, Any]) -> str:
-    final = report.get("finalVerdict")
-    if isinstance(final, Mapping):
-        return str(final.get("verdict", "unknown")).lower()
-    return "unknown"
-
-
-def _threat_level(report: Mapping[str, Any]) -> float | None:
-    """The threat level, when the server sent a number SARIF can carry."""
-    final = report.get("finalVerdict")
-    level = final.get("threatLevel") if isinstance(final, Mapping) else None
-    if isinstance(level, bool) or not isinstance(level, int | float):
-        return None
-    return float(level) if math.isfinite(level) else None
-
-
 def _flow_file_size(value: Mapping[str, Any]) -> int | None:
     """The uploaded file's size, which the API reports beside the reports."""
     size = value.get("fileSize")
@@ -370,7 +336,7 @@ def _location(index: int, uri: str) -> dict[str, Any]:
 
 
 def _verdict_result(report: Mapping[str, Any], index: int, uri: str) -> dict[str, Any]:
-    verdict = _verdict_of(report)
+    verdict = verdict_of(report)
     result: dict[str, Any] = {
         "message": {"text": f"filescan.io verdict: {verdict}"},
         "locations": [_location(index, uri)],
@@ -380,7 +346,7 @@ def _verdict_result(report: Mapping[str, Any], index: int, uri: str) -> dict[str
     else:
         # A kind other than "fail" must not carry a level (SARIF 2.1.0 3.27.9).
         result["kind"] = VERDICT_KINDS.get(verdict, "notApplicable")
-    threat = _threat_level(report)
+    threat = threat_level(report)
     if threat is not None:
         # The threat level is a fraction, and SARIF 2.1.0 3.27.16 confines
         # rank to 0.0-100.0 however the server chose to scale it.
@@ -396,14 +362,14 @@ def _signal_result(
     rule: dict[str, Any] = {
         "id": identifier,
         "shortDescription": {"text": description},
-        "properties": {"security-severity": str(_strength(group))},
+        "properties": {"security-severity": str(strength(group))},
     }
     techniques = str(group.get("mitre_technique_ids", "")).replace(" ", "")
     if techniques:
         rule["properties"]["tags"] = techniques.split(",")
     result = {
         "ruleId": identifier,
-        "level": "error" if _strength(group) >= STRONG_SIGNAL else "warning",
+        "level": "error" if strength(group) >= STRONG_SIGNAL else "warning",
         "message": {"text": description},
         "locations": [_location(index, uri)],
     }
@@ -414,7 +380,7 @@ def render_sarif(value: Any) -> str:
     """Render a scan report as a SARIF 2.1.0 log."""
     if not isinstance(value, Mapping):
         raise Unrepresentable("SARIF needs a scan report object")
-    reports = _reports_of(value)
+    reports = reports_of(value)
     if not reports:
         raise Unrepresentable("the response carries no scan reports")
     artifacts: list[dict[str, Any]] = []
@@ -428,7 +394,7 @@ def render_sarif(value: Any) -> str:
         index = len(artifacts)
         artifacts.append(artifact)
         uri = str(artifact["location"]["uri"])
-        groups = _signal_groups(report)
+        groups = signal_groups(report)
         for group in groups:
             rule, result = _signal_result(group, index, uri)
             rules.setdefault(rule["id"], rule)

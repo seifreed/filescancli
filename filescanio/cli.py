@@ -21,11 +21,12 @@ from filescanio.errors import (
     ConfigError,
     FileScanError,
     TransportError,
+    Unrepresentable,
     describe,
 )
 from filescanio.groups._base import ReportView
 from filescanio.groups.scan import DEFAULT_WORKERS, ScanOptions
-from filescanio.render import Format, Unrepresentable, render, render_json
+from filescanio.render import Format, render, render_json
 from filescanio.transport import (
     BAD_RETRIES,
     BAD_TIMEOUT,

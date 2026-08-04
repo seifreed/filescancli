@@ -7,6 +7,14 @@ class FileScanError(Exception):
     """Base error for the filescanio package."""
 
 
+class Unrepresentable(Exception):
+    """Raised when a format cannot express the value it was handed.
+
+    Deliberately not a FileScanError: the CLI treats it as a rendering
+    fallback, never as a failed command.
+    """
+
+
 class ConfigError(FileScanError):
     """Raised when no API key can be resolved."""
 

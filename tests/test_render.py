@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
+from filescanio.errors import Unrepresentable
 from filescanio.render import (
     SARIF_SCHEMA,
     Format,
-    Unrepresentable,
     render,
     render_json,
     render_sarif,
