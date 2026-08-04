@@ -39,6 +39,17 @@ def verdict_of(report: Mapping[str, Any]) -> str:
     return str(verdict).lower() if verdict is not None else "unknown"
 
 
+def verdict_label(node: Mapping[str, Any]) -> str:
+    """The verdict a nested verdict mapping names, lower-cased, or "unknown".
+
+    Signal groups and YARA matches both carry their verdict this way.
+    """
+    verdict = at(node, "verdict", "verdict")
+    if isinstance(verdict, str) and verdict.strip():
+        return verdict.strip().lower()
+    return "unknown"
+
+
 def threat_level(report: Mapping[str, Any]) -> float | None:
     """The threat level, when the server sent a usable number."""
     return numeric(at(report, "finalVerdict", "threatLevel"))

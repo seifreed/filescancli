@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from filescanio.scanreport._access import at, records
+from filescanio.scanreport._access import records
 from filescanio.scanreport._layout import (
     Field,
     indent,
@@ -15,7 +15,7 @@ from filescanio.scanreport._layout import (
     tag_names,
     text,
 )
-from filescanio.scanreport.model import ScanReport
+from filescanio.scanreport.model import ScanReport, verdict_label
 
 IOC_CATEGORIES: tuple[tuple[str, str], ...] = (
     ("URLs", "extractedUrls"),
@@ -58,9 +58,8 @@ YARA_FIELDS: tuple[Field, ...] = (Field("Matches", ("matchedStrings",), joined),
 def yara_lines(rule: Mapping[str, Any]) -> list[str]:
     """One matched rule with its verdict, matches, and metadata."""
     name = text(rule.get("ruleName")) or "rule"
-    verdict = (text(at(rule, "verdict", "verdict")) or "unknown").lower()
     facts = rows(rule, YARA_FIELDS) + scalar_items(rule.get("metaData"))
-    return [f"{name} [{verdict}]", *indent(pairs(facts))]
+    return [f"{name} [{verdict_label(rule)}]", *indent(pairs(facts))]
 
 
 def yara(scan: ScanReport) -> list[str]:

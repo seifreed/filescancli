@@ -10,6 +10,7 @@ from filescanio.scanreport.model import (
     signal_groups,
     strength,
     threat_level,
+    verdict_label,
     verdict_of,
 )
 
@@ -76,6 +77,21 @@ def test_verdict_of(report: dict[str, Any], expected: str) -> None:
 )
 def test_threat_level(report: dict[str, Any], expected: float | None) -> None:
     assert threat_level(report) == expected
+
+
+@pytest.mark.parametrize(
+    ("node", "expected"),
+    [
+        ({"verdict": {"verdict": "SUSPICIOUS"}}, "suspicious"),
+        ({"verdict": {"verdict": "  Malicious "}}, "malicious"),
+        ({"verdict": {"verdict": ""}}, "unknown"),
+        ({"verdict": {"verdict": 7}}, "unknown"),
+        ({"verdict": []}, "unknown"),
+        ({}, "unknown"),
+    ],
+)
+def test_verdict_label(node: dict[str, Any], expected: str) -> None:
+    assert verdict_label(node) == expected
 
 
 FILE_RESOURCE = {"resourceReference": {"name": "file"}, "fileSize": 10}

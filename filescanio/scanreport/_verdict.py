@@ -15,7 +15,12 @@ from filescanio.scanreport._layout import (
     text,
     titled,
 )
-from filescanio.scanreport.model import ScanReport, signal_groups, verdict_of
+from filescanio.scanreport.model import (
+    ScanReport,
+    signal_groups,
+    verdict_label,
+    verdict_of,
+)
 
 REPORT_FIELDS: tuple[Field, ...] = (
     Field("Confidence", ("finalVerdict", "confidence"), percent),
@@ -85,9 +90,9 @@ def group_threat(group: Mapping[str, Any]) -> float:
 
 def group_lines(group: Mapping[str, Any]) -> list[str]:
     """One group as a verdict-labelled header with its indented facts."""
-    verdict = (text(at(group, "verdict", "verdict")) or "unknown").lower()
     description = text(group.get("description")) or "signal group"
-    return [f"{description} [{verdict}]", *indent(pairs(rows(group, GROUP_FIELDS)))]
+    header = f"{description} [{verdict_label(group)}]"
+    return [header, *indent(pairs(rows(group, GROUP_FIELDS)))]
 
 
 def signals(scan: ScanReport) -> list[str]:
