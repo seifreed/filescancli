@@ -52,7 +52,9 @@ def test_headings_appear_in_report_order() -> None:
         "File details",
         "Emulation overview",
         "Emulation actions",
+        "IOCs",
         "Disassembly",
+        "YARA matches",
         "Interesting strings",
     )
     positions = [rendered.index(title) for title in titles]
@@ -138,6 +140,23 @@ def test_strings_keep_only_the_interesting_ones() -> None:
     rendered = render_report(FULL_REPORT)
     assert "cmd.exe /c whoami (Static Analysis)" in rendered
     assert "hello" not in rendered
+
+
+def test_iocs_list_only_populated_categories() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "URLs" in rendered
+    assert "  http://evil.example/c2 (interesting)" in rendered
+    assert "Domains" in rendered
+    assert "  evil.example" in rendered
+    assert "Registry paths" not in rendered
+    assert "SHA-512 hashes" not in rendered
+
+
+def test_yara_matches_show_verdict_matches_and_metadata() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "win_upx_packed [suspicious]" in rendered
+    assert re.search(line("  Matches", "UPX0, UPX1"), rendered, re.MULTILINE)
+    assert re.search(line("  author", "analyst"), rendered, re.MULTILINE)
 
 
 def test_no_trailing_whitespace() -> None:

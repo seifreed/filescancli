@@ -108,7 +108,7 @@ FULL_REPORT: dict[str, Any] = {
                     "extractedDomains": [
                         {
                             "origin": {"type": "static_analysis"},
-                            "references": [{"data": "evil.example"}],
+                            "references": [{"data": "evil.example"}, {"junk": 1}],
                         }
                     ],
                     "disassemblySections": [

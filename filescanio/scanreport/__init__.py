@@ -16,6 +16,7 @@ from filescanio.scanreport._behaviour import (
     strings,
 )
 from filescanio.scanreport._details import details
+from filescanio.scanreport._findings import iocs, yara
 from filescanio.scanreport._layout import heading
 from filescanio.scanreport._verdict import overview, signals, tags
 from filescanio.scanreport.model import ScanReport, reports_of
@@ -29,7 +30,9 @@ SECTIONS: tuple[tuple[str, Section], ...] = (
     ("File details", details),
     ("Emulation overview", emulation_overview),
     ("Emulation actions", actions),
+    ("IOCs", iocs),
     ("Disassembly", disassembly),
+    ("YARA matches", yara),
     ("Interesting strings", strings),
 )
 
