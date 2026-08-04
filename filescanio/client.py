@@ -12,7 +12,7 @@ from filescanio.groups.system import SystemGroup
 from filescanio.groups.threatintel import ThreatIntelGroup
 from filescanio.groups.users import UsersGroup
 from filescanio.http import Transport
-from filescanio.transport import DEFAULT_TIMEOUT
+from filescanio.transport import DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT
 
 
 class FileScanClient:
@@ -27,6 +27,7 @@ class FileScanClient:
         api_key: str | None = None,
         base_url: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> None:
         if not (api_key or "").strip():
             api_key = load_settings().api_key
@@ -34,6 +35,7 @@ class FileScanClient:
             api_key=api_key or "",
             base_url=(base_url or "").strip() or resolve_base_url(),
             timeout=timeout,
+            max_retries=max_retries,
         )
         self.scan = ScanGroup(self._transport)
         self.reports = ReportsGroup(self._transport)

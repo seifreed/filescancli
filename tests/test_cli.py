@@ -1073,3 +1073,14 @@ def test_a_text_response_ignores_the_format(
     assert run(api_server, "--format", "table", "feed", "reports") == 0
     echo: dict[str, Any] = json.loads(capsysbinary.readouterr().out)
     assert echo["path"] == "/api/feed/reports"
+
+
+def test_max_retries_flag_reaches_the_client(api_server: str) -> None:
+    assert run(api_server, "--max-retries", "0", "system", "info") == 0
+
+
+@pytest.mark.parametrize("value", ["-1", "abc", "2.5"])
+def test_invalid_max_retries_rejected(api_server: str, value: str) -> None:
+    with pytest.raises(SystemExit) as excinfo:
+        run(api_server, "--max-retries", value, "system", "info")
+    assert excinfo.value.code == 2

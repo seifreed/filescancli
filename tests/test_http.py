@@ -1,10 +1,12 @@
 import gc
+import json
 import pickle
 import socket
 import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -16,8 +18,13 @@ from filescanio.errors import (
     RequestTimeout,
     TransportError,
 )
-from filescanio.http import Transport, clean_params
-from tests.conftest import serve, set_env
+from filescanio.http import (
+    MAX_RETRY_WAIT,
+    Transport,
+    _retry_delay,
+    clean_params,
+)
+from tests.conftest import Canned, send, serve, set_env
 
 
 def test_clean_params_drops_none() -> None:
@@ -300,10 +307,145 @@ def test_timeout_raises_a_branchable_error() -> None:
 
 
 def test_rate_limit_exposes_retry_after(api_server: str) -> None:
+    """max_retries=0 so the raw 429 is observed instead of being retried."""
     with (
-        Transport(api_key="k", base_url=api_server) as transport,
+        Transport(api_key="k", base_url=api_server, max_retries=0) as transport,
         pytest.raises(ApiError) as excinfo,
     ):
         transport.request_json("GET", "/ratelimited")
     assert excinfo.value.status_code == 429
     assert excinfo.value.retry_after == "120"
+
+
+class RetryHandler(BaseHTTPRequestHandler):
+    """Answers 429 with a Retry-After until the configured attempt succeeds."""
+
+    succeed_on = 1
+    seen = 0
+
+    def _answer(self) -> None:
+        length = int(self.headers.get("Content-Length", "0"))
+        RetryHandler.seen += 1
+        body = self.rfile.read(length)
+        if RetryHandler.seen < RetryHandler.succeed_on:
+            send(
+                self,
+                Canned(
+                    429, b'{"detail": "slow down"}', headers=(("Retry-After", "0"),)
+                ),
+            )
+            return
+        send(
+            self,
+            Canned(
+                200,
+                json.dumps(
+                    {"attempts": RetryHandler.seen, "body_len": len(body)}
+                ).encode(),
+            ),
+        )
+
+    do_GET = _answer
+    do_POST = _answer
+
+    def log_message(self, *args: object) -> None:
+        """Keep the test output free of per-request server logging."""
+
+
+@contextmanager
+def retrying(succeed_on: int) -> Iterator[str]:
+    RetryHandler.succeed_on = succeed_on
+    RetryHandler.seen = 0
+    with serve(RetryHandler) as base_url:
+        yield base_url
+
+
+def test_a_rate_limited_request_is_retried_until_it_succeeds() -> None:
+    with (
+        retrying(succeed_on=3) as base_url,
+        Transport(api_key="k", base_url=base_url, retry_backoff=0) as transport,
+    ):
+        assert transport.request_json("GET", "/api/thing")["attempts"] == 3
+
+
+def test_retries_are_bounded_and_the_last_failure_reaches_the_caller() -> None:
+    with (
+        retrying(succeed_on=99) as base_url,
+        Transport(
+            api_key="k", base_url=base_url, max_retries=2, retry_backoff=0
+        ) as transport,
+        pytest.raises(ApiError) as excinfo,
+    ):
+        transport.request_json("GET", "/api/thing")
+    assert excinfo.value.status_code == 429
+    assert RetryHandler.seen == 3  # two retries plus the final attempt
+
+
+def test_no_retries_when_the_caller_asked_for_none() -> None:
+    with (
+        retrying(succeed_on=99) as base_url,
+        Transport(api_key="k", base_url=base_url, max_retries=0) as transport,
+        pytest.raises(ApiError),
+    ):
+        transport.request_json("GET", "/api/thing")
+    assert RetryHandler.seen == 1
+
+
+def test_a_retried_upload_resends_the_whole_file(tmp_path: Path) -> None:
+    """A consumed handle would make the retry send an empty body."""
+    sample = tmp_path / "sample.bin"
+    sample.write_bytes(b"payload-that-must-survive")
+    with (
+        retrying(succeed_on=2) as base_url,
+        Transport(api_key="k", base_url=base_url, retry_backoff=0) as transport,
+        sample.open("rb") as handle,
+    ):
+        echo = transport.request_json(
+            "POST", "/api/scan/file", files={"file": (sample.name, handle)}
+        )
+    assert echo["attempts"] == 2
+    assert echo["body_len"] > len(b"payload-that-must-survive")
+
+
+def test_a_bare_handle_is_rewound_too(tmp_path: Path) -> None:
+    sample = tmp_path / "bare.bin"
+    sample.write_bytes(b"bare-content")
+    with (
+        retrying(succeed_on=2) as base_url,
+        Transport(api_key="k", base_url=base_url, retry_backoff=0) as transport,
+        sample.open("rb") as handle,
+    ):
+        echo = transport.request_json("POST", "/api/scan/file", files={"file": handle})
+    assert echo["attempts"] == 2
+
+
+def test_an_error_that_is_not_a_rate_limit_is_not_retried(api_server: str) -> None:
+    with (
+        Transport(api_key="k", base_url=api_server, retry_backoff=0) as transport,
+        pytest.raises(ApiError) as excinfo,
+    ):
+        transport.request_json("GET", "/status/422")
+    assert excinfo.value.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("retry_after", "expected"),
+    [
+        pytest.param("5", 5.0, id="plain seconds"),
+        pytest.param("-1", 0.0, id="negative clamped"),
+        pytest.param("999999", MAX_RETRY_WAIT, id="capped"),
+        pytest.param("Wed, 21 Oct 2026 07:28:00 GMT", 2.0, id="http date backs off"),
+        pytest.param(None, 2.0, id="absent backs off"),
+    ],
+)
+def test_retry_delay_prefers_the_servers_own_answer(
+    retry_after: str | None, expected: float
+) -> None:
+    delay = _retry_delay(ApiError(429, "slow", retry_after), attempt=1, backoff=1.0)
+    assert delay == expected
+
+
+@pytest.mark.parametrize("attempts", [-1, True, 2.5])
+def test_unusable_retry_counts_rejected(api_server: str, attempts: Any) -> None:
+    with pytest.raises(ConfigError, match="max retries"):
+        Transport(api_key="k", base_url=api_server, max_retries=attempts)

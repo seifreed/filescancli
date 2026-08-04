@@ -27,9 +27,12 @@ from filescanio.groups._base import ReportView
 from filescanio.groups.scan import ScanOptions
 from filescanio.render import Format, Unrepresentable, render, render_json
 from filescanio.transport import (
+    BAD_RETRIES,
     BAD_TIMEOUT,
+    DEFAULT_MAX_RETRIES,
     DEFAULT_TIMEOUT,
     QueryValue,
+    is_usable_retries,
     is_usable_timeout,
 )
 
@@ -61,6 +64,13 @@ def _read_stdin_bytes() -> bytes:
     if buffer is not None:
         return bytes(buffer.read())
     return str(stream.read()).encode("utf-8", "surrogateescape")
+
+
+def _retry_count(value: str) -> int:
+    count = int(value)
+    if not is_usable_retries(count):
+        raise argparse.ArgumentTypeError(BAD_RETRIES)
+    return count
 
 
 def _read_json_argument(source: str) -> Any:
@@ -421,6 +431,12 @@ def _add_global_options(
         help="Write the response to this file",
     )
     parser.add_argument(
+        "--max-retries",
+        type=_retry_count,
+        default=suppress if inherited else DEFAULT_MAX_RETRIES,
+        help="Times to retry a rate-limited request (default: 3)",
+    )
+    parser.add_argument(
         "--timeout",
         type=_positive_timeout,
         default=suppress if inherited else DEFAULT_TIMEOUT,
@@ -749,7 +765,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 0
         with FileScanClient(
-            api_key=args.api_key, base_url=args.base_url, timeout=args.timeout
+            api_key=args.api_key,
+            base_url=args.base_url,
+            timeout=args.timeout,
+            max_retries=args.max_retries,
         ) as client:
             result = args.handler(client, args)
         _emit(result, fmt=args.format, raw=args.raw, output=args.output)

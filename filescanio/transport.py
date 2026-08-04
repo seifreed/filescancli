@@ -10,6 +10,16 @@ QueryValue = str | int | float | bool | list[str] | None
 
 BAD_TIMEOUT = "timeout must be a positive finite number"
 BAD_BASE_URL = "must not contain a query string or fragment"
+BAD_RETRIES = "max retries must be a non-negative whole number"
+
+DEFAULT_MAX_RETRIES = 3
+
+
+def is_usable_retries(attempts: int) -> bool:
+    """Report whether a retry count can drive the transport's retry loop."""
+    return (
+        not isinstance(attempts, bool) and isinstance(attempts, int) and attempts >= 0
+    )
 
 
 def is_usable_timeout(seconds: float) -> bool:
