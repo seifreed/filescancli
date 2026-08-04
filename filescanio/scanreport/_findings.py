@@ -11,6 +11,8 @@ from filescanio.scanreport._layout import (
     pairs,
     rows,
     scalar_items,
+    size,
+    tag_names,
     text,
 )
 from filescanio.scanreport.model import ScanReport
@@ -65,3 +67,25 @@ def yara(scan: ScanReport) -> list[str]:
     """Every YARA rule the sample matched."""
     matches = records(scan.resource("file").get("yaraMatches"))
     return [row for rule in matches for row in yara_lines(rule)]
+
+
+EXTRACTED_FIELDS: tuple[Field, ...] = (
+    Field("Description", ("extendedData", "fileMagicDescription")),
+    Field("Size", ("fileSize",), size),
+    Field("Type", ("mediaType", "string")),
+    Field("Tags", ("allTags",), tag_names),
+)
+
+
+def extracted_lines(file: Mapping[str, Any]) -> list[str]:
+    """One extracted file with its facts, digests, and metadata."""
+    name = text(file.get("submitName")) or "extracted file"
+    facts = rows(file, EXTRACTED_FIELDS)
+    facts += scalar_items(file.get("digests")) + scalar_items(file.get("metaData"))
+    return [name, *indent(pairs(facts))]
+
+
+def extracted_files(scan: ScanReport) -> list[str]:
+    """Every file the analysis pulled out of the sample."""
+    files = records(scan.resource("file").get("extractedFiles"))
+    return [row for file in files for row in extracted_lines(file)]

@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from filescanio.scanreport._access import at, mapping, numeric, sequence
+from filescanio.scanreport._access import at, mapping, numeric, records, sequence
 
 
 def text(value: Any) -> str | None:
@@ -37,6 +37,12 @@ def joined(value: Any) -> str | None:
     """The scalar elements of a list, joined, or None."""
     parts = [part for item in sequence(value) if (part := text(item))]
     return ", ".join(parts) or None
+
+
+def tag_names(value: Any) -> str | None:
+    """The tag names in a tag list, joined, or None."""
+    names = [name for item in records(value) if (name := text(at(item, "tag", "name")))]
+    return ", ".join(names) or None
 
 
 def human_size(value: int) -> str:

@@ -56,6 +56,7 @@ def test_headings_appear_in_report_order() -> None:
         "Disassembly",
         "YARA matches",
         "Interesting strings",
+        "Extracted files",
     )
     positions = [rendered.index(title) for title in titles]
     assert positions == sorted(positions)
@@ -157,6 +158,16 @@ def test_yara_matches_show_verdict_matches_and_metadata() -> None:
     assert "win_upx_packed [suspicious]" in rendered
     assert re.search(line("  Matches", "UPX0, UPX1"), rendered, re.MULTILINE)
     assert re.search(line("  author", "analyst"), rendered, re.MULTILINE)
+
+
+def test_extracted_files_show_facts_digests_and_metadata() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "payload.bin" in rendered
+    assert re.search(line("  Type", "application/octet-stream"), rendered, re.MULTILINE)
+    assert re.search(line("  Size", "1 KiB"), rendered, re.MULTILINE)
+    assert re.search(line("  Tags", "dropped"), rendered, re.MULTILINE)
+    assert re.search(line("  SHA-256", "f" * 64), rendered, re.MULTILINE)
+    assert re.search(line("  entropy", "7.9"), rendered, re.MULTILINE)
 
 
 def test_no_trailing_whitespace() -> None:

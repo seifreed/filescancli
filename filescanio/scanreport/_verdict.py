@@ -11,6 +11,7 @@ from filescanio.scanreport._layout import (
     percent,
     rows,
     squeeze,
+    tag_names,
     text,
     titled,
 )
@@ -34,12 +35,6 @@ def overview(scan: ScanReport) -> list[str]:
     found += rows(scan.report, REPORT_FIELDS)
     found += rows(scan.resource("file"), FILE_FIELDS)
     return pairs(found)
-
-
-def tag_names(value: Any) -> str | None:
-    """The tag names in a tag list, joined, or None."""
-    names = [name for item in records(value) if (name := text(at(item, "tag", "name")))]
-    return ", ".join(names) or None
 
 
 TAG_FIELDS: tuple[Field, ...] = (Field("Tags", ("allTags",), tag_names),)
