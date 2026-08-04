@@ -174,6 +174,10 @@ redirected, so `filescan system info` is readable and
 | `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/) for scan reports, so findings can be uploaded to code-scanning tools. |
 | `report` | A readable digest of a scan report: verdict, tags, signal groups, per-family file details (PE/ELF/PDF/Office/LNK/Mbox), emulation, IOCs, disassembly, YARA, notable strings, extracted files, OSINT and geolocation. Sections with nothing to say are omitted. |
 
+`--format report` adds colour when stdout is a terminal, honouring the
+[`NO_COLOR` / `FORCE_COLOR`](https://no-color.org) conventions; pipes,
+redirections and `-o` files always receive plain text.
+
 A format that cannot express a response falls back to JSON and says so on
 stderr — asking for a table of a nested scan report, or SARIF of
 `system languages`, never fails the command. Binary responses

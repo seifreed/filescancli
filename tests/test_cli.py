@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import runpy
 import sys
 from collections.abc import Iterator
@@ -13,7 +14,7 @@ from urllib.parse import parse_qs
 import pytest
 
 from filescanio import __version__
-from filescanio.cli import SIMPLE_COMMANDS, _emit, main
+from filescanio.cli import SIMPLE_COMMANDS, _colorize_report, _emit, main
 from filescanio.config import DEFAULT_BASE_URL, write_config
 from filescanio.errors import FileScanError
 from filescanio.render import Format
@@ -1119,6 +1120,69 @@ def test_invalid_max_retries_rejected(api_server: str, value: str) -> None:
     with pytest.raises(SystemExit) as excinfo:
         run(api_server, "--max-retries", value, "system", "info")
     assert excinfo.value.code == 2
+
+
+REPORTISH = json.dumps(
+    {"reports": {"x": {"finalVerdict": {"verdict": "MALICIOUS"}, "resources": {}}}}
+).encode()
+
+
+def test_colorize_report_paints_headings_verdicts_and_markers() -> None:
+    text = "Overview\n========\nVerdict  malicious\nrule [suspicious]\nx (interesting)"
+    painted = _colorize_report(text)
+    assert "\x1b[1mOverview\x1b[0m\n========" in painted
+    assert "Verdict  \x1b[31mmalicious\x1b[0m" in painted
+    assert "[\x1b[33msuspicious\x1b[0m]" in painted
+    assert "\x1b[33m(interesting)\x1b[0m" in painted
+
+
+def test_report_format_colours_when_the_terminal_asks(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    os.environ["FORCE_COLOR"] = "1"
+    try:
+        with json_server(lambda _: (200, REPORTISH)) as base_url:
+            assert run(base_url, "--format", "report", "report", "r1", "h1") == 0
+    finally:
+        del os.environ["FORCE_COLOR"]
+    out = capsys.readouterr().out
+    assert "\x1b[1mOverview\x1b[0m" in out
+    assert "\x1b[31mmalicious\x1b[0m" in out
+
+
+def test_report_format_stays_plain_when_piped(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with json_server(lambda _: (200, REPORTISH)) as base_url:
+        assert run(base_url, "--format", "report", "report", "r1", "h1") == 0
+    out = capsys.readouterr().out
+    assert "Verdict  malicious" in out
+    assert "\x1b" not in out
+
+
+def test_no_color_outranks_force_color(capsys: pytest.CaptureFixture[str]) -> None:
+    os.environ["FORCE_COLOR"] = "1"
+    os.environ["NO_COLOR"] = "1"
+    try:
+        with json_server(lambda _: (200, REPORTISH)) as base_url:
+            assert run(base_url, "--format", "report", "report", "r1", "h1") == 0
+    finally:
+        del os.environ["FORCE_COLOR"]
+        del os.environ["NO_COLOR"]
+    assert "\x1b" not in capsys.readouterr().out
+
+
+def test_bytes_stay_raw_even_under_force_color(
+    api_server: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    os.environ["FORCE_COLOR"] = "1"
+    try:
+        echo = run_echo(
+            api_server, capsys, "--format", "report", "report-download", "r1"
+        )
+    finally:
+        del os.environ["FORCE_COLOR"]
+    assert echo["path"] == "/api/reports/r1/download"
 
 
 def test_report_download_returns_raw_bytes(

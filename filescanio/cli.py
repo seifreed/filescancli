@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -813,6 +814,53 @@ def _resolve_format(fmt: Format | None, stream: Any) -> Format:
     return Format.TABLE if stream.isatty() else Format.JSON
 
 
+# Colour lives here, not in render(): rendering stays pure and pipes, files,
+# and -o output never see an escape code. NO_COLOR and FORCE_COLOR follow
+# the informal standard at https://no-color.org.
+ANSI_RESET = "\x1b[0m"
+ANSI_BOLD = "\x1b[1m"
+ANSI_DIM = "\x1b[2m"
+ANSI_RED = "\x1b[31m"
+ANSI_GREEN = "\x1b[32m"
+ANSI_YELLOW = "\x1b[33m"
+
+VERDICT_COLOURS = {
+    "malicious": ANSI_RED,
+    "likely_malicious": ANSI_RED,
+    "suspicious": ANSI_YELLOW,
+    "benign": ANSI_GREEN,
+    "informational": ANSI_GREEN,
+    "no_threat": ANSI_GREEN,
+    "unknown": ANSI_DIM,
+}
+
+_HEADING = re.compile(r"^(.+)\n(=+)$", flags=re.MULTILINE)
+_MARKED_VERDICT = re.compile(r"\[([a-z_]+)\]")
+_VERDICT_ROW = re.compile(r"^(Verdict +)([a-z_]+)$", flags=re.MULTILINE)
+_INTERESTING = re.compile(r"\(interesting\)")
+
+
+def _paint(word: str) -> str:
+    return VERDICT_COLOURS.get(word, "") + word + ANSI_RESET
+
+
+def _colorize_report(text: str) -> str:
+    """Bold the headings and colour the verdicts of a rendered report."""
+    text = _HEADING.sub(rf"{ANSI_BOLD}\1{ANSI_RESET}\n\2", text)
+    text = _MARKED_VERDICT.sub(lambda m: f"[{_paint(m.group(1))}]", text)
+    text = _VERDICT_ROW.sub(lambda m: m.group(1) + _paint(m.group(2)), text)
+    return _INTERESTING.sub(f"{ANSI_YELLOW}(interesting){ANSI_RESET}", text)
+
+
+def _wants_colour(stream: Any) -> bool:
+    """Whether the stream should see colour; NO_COLOR outranks FORCE_COLOR."""
+    if "NO_COLOR" in os.environ:
+        return False
+    if "FORCE_COLOR" in os.environ:
+        return True
+    return bool(stream.isatty())
+
+
 def _payload(result: Any, fmt: Format, *, compact: bool) -> bytes:
     """Render the result, falling back to JSON when the format cannot hold it."""
     if isinstance(result, str):
@@ -840,11 +888,16 @@ def _emit(
         _write_output(output, payload)
         return
     stdout = _stream("stdout")
+    resolved = _resolve_format(fmt, stdout)
     payload = (
-        result
-        if isinstance(result, bytes)
-        else _payload(result, _resolve_format(fmt, stdout), compact=raw)
+        result if isinstance(result, bytes) else _payload(result, resolved, compact=raw)
     )
+    if (
+        resolved is Format.REPORT
+        and not isinstance(result, bytes)
+        and _wants_colour(stdout)
+    ):
+        payload = _colorize_report(payload.decode()).encode()
     buffer = getattr(stdout, "buffer", None)
     if buffer is None:
         stdout.write(payload.decode("utf-8", errors="replace"))
