@@ -523,6 +523,12 @@ def test_system_yara_writes_output_file(
             {"type": ["main"], "theme": ["dark"], "name": ["logo"]},
             id="site logo",
         ),
+        pytest.param(
+            ("files", "download", "cafe1234", "--password", "infected"),
+            "/api/files/cafe1234",
+            {"type": ["raw"], "password": ["infected"]},
+            id="sample download",
+        ),
     ],
 )
 def test_binary_responses_go_to_stdout(

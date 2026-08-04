@@ -130,6 +130,7 @@ filescan reports public --page 1
 filescan reports matches <report_id> --filter verdict=malicious
 filescan report-download <report_id> --as pdf -o report.pdf   # misp|stix|html|pdf
 filescan files availability <sha256> [<sha256> ...]
+filescan files download <sha256> --password infected -o sample.zip
 filescan similarity <sha256> --min-similarity 80   # endpoint deprecated upstream
 filescan reputation hash <sha256> [<sha256> ...]      # bulk when several
 filescan reputation ioc domain evil.example [more...] # domain|ip|url
@@ -151,7 +152,7 @@ filescan misc openapi|sitemap
 | `filescan scan` | Submit files or URLs, fetch and poll flow reports |
 | `filescan report` | A single report by report ID and file hash |
 | `filescan search` / `reports` | Free-text search, public listings, match filters |
-| `filescan files` | Hash availability on the platform |
+| `filescan files` | Hash availability, sample download |
 | `filescan reputation` | Hash and IOC reputation, bulk when several values are given |
 | `filescan threatintel` | IOC prevalence and special-hash similarity |
 | `filescan system` | Platform info, config, YARA, MITRE/MBC reference data |

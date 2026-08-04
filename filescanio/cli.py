@@ -251,6 +251,10 @@ def _handle_availability(client: FileScanClient, args: argparse.Namespace) -> An
     return client.files.availability(args.hashes)
 
 
+def _handle_file_download(client: FileScanClient, args: argparse.Namespace) -> Any:
+    return client.files.download(args.file_hash, password=args.password)
+
+
 def _handle_similarity(client: FileScanClient, args: argparse.Namespace) -> Any:
     return client.similarity.similar(
         args.hash,
@@ -568,6 +572,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     availability.add_argument("hashes", nargs="+")
     availability.set_defaults(handler=_handle_availability)
+    files_download = _subparser(
+        files_sub, "download", help="Download a sample (undocumented API)"
+    )
+    files_download.add_argument("file_hash")
+    files_download.add_argument(
+        "--password", help="Password the server zips the sample under"
+    )
+    files_download.set_defaults(handler=_handle_file_download)
 
     similarity = _subparser(
         commands,
