@@ -71,7 +71,11 @@ FULL_REPORT: dict[str, Any] = {
                     },
                     "emulationMetaData": {
                         "Overview": {
-                            "FunctionCount": {"CreateFileW": 2, "WriteFile": 5},
+                            "FunctionCount": {
+                                "CreateFileW": 2,
+                                "WriteFile": 5,
+                                "junk": "x",
+                            },
                             "Duration": "3ms",
                         }
                     },
@@ -87,7 +91,10 @@ FULL_REPORT: dict[str, Any] = {
                         },
                         {
                             "action": "WriteMemory",
-                            "additionalInformation": {"Address": "0x5000"},
+                            "additionalInformation": {
+                                "Address": "0x5000",
+                                "Content": "0xdeadbeef",
+                            },
                         },
                     ],
                     "extractedUrls": [

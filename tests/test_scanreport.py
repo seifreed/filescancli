@@ -45,7 +45,16 @@ def test_tags_are_joined_and_nameless_tags_dropped() -> None:
 
 def test_headings_appear_in_report_order() -> None:
     rendered = render_report(FULL_REPORT)
-    titles = ("Overview", "Tags", "Signal groups", "File details")
+    titles = (
+        "Overview",
+        "Tags",
+        "Signal groups",
+        "File details",
+        "Emulation overview",
+        "Emulation actions",
+        "Disassembly",
+        "Interesting strings",
+    )
     positions = [rendered.index(title) for title in titles]
     assert positions == sorted(positions)
 
@@ -103,6 +112,32 @@ def test_file_details_cover_magic_size_digests_and_pe_facts() -> None:
 def test_each_file_kind_shows_its_own_fields(kind: str, label: str, value: str) -> None:
     rendered = render_report(TYPED_REPORTS[kind])
     assert re.search(line(label, value), rendered, re.MULTILINE)
+
+
+def test_emulation_overview_counts_calls_most_called_first() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert re.search(line("WriteFile", "5"), rendered, re.MULTILINE)
+    assert rendered.index("WriteFile") < rendered.index("CreateFileW")
+    assert re.search(line("Duration", "3ms"), rendered, re.MULTILINE)
+
+
+def test_emulation_actions_are_named_and_detailed() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "CallAPI (interesting) kernel32 CreateFileW" in rendered
+    assert re.search(line("  Arguments", "path=C:\\evil.tmp"), rendered, re.MULTILINE)
+    assert "WriteMemory 0x5000" in rendered
+    assert "0xdeadbeef" not in rendered
+
+
+def test_disassembly_summarises_each_region() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "RVA 0x1000: entry point, 2 instructions" in rendered
+
+
+def test_strings_keep_only_the_interesting_ones() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "cmd.exe /c whoami (Static Analysis)" in rendered
+    assert "hello" not in rendered
 
 
 def test_no_trailing_whitespace() -> None:

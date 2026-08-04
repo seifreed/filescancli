@@ -9,6 +9,12 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from filescanio.errors import Unrepresentable
+from filescanio.scanreport._behaviour import (
+    actions,
+    disassembly,
+    emulation_overview,
+    strings,
+)
 from filescanio.scanreport._details import details
 from filescanio.scanreport._layout import heading
 from filescanio.scanreport._verdict import overview, signals, tags
@@ -21,6 +27,10 @@ SECTIONS: tuple[tuple[str, Section], ...] = (
     ("Tags", tags),
     ("Signal groups", signals),
     ("File details", details),
+    ("Emulation overview", emulation_overview),
+    ("Emulation actions", actions),
+    ("Disassembly", disassembly),
+    ("Interesting strings", strings),
 )
 
 
