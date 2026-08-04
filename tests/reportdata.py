@@ -35,17 +35,19 @@ FULL_REPORT: dict[str, Any] = {
                             "relatedTactic": {"name": "Defense Evasion"},
                         },
                         {"name": "Obfuscated Files or Information"},
+                        {},
                     ],
                     "signals": [
                         {
                             "signalReadable": "Opens a \n   remote process",
                             "originType": "static_analysis",
-                        }
+                        },
+                        {},
                     ],
                 },
                 {
                     "description": "Contains long flat data streams",
-                    "verdict": {"verdict": "INFORMATIONAL", "threatLevel": 0.1},
+                    "verdict": {"verdict": "INFORMATIONAL"},
                 },
             ],
             "resources": {

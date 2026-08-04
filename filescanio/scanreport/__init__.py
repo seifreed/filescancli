@@ -10,7 +10,7 @@ from typing import Any
 
 from filescanio.errors import Unrepresentable
 from filescanio.scanreport._layout import heading
-from filescanio.scanreport._verdict import overview, tags
+from filescanio.scanreport._verdict import overview, signals, tags
 from filescanio.scanreport.model import ScanReport, reports_of
 
 Section = Callable[[ScanReport], list[str]]
@@ -18,6 +18,7 @@ Section = Callable[[ScanReport], list[str]]
 SECTIONS: tuple[tuple[str, Section], ...] = (
     ("Overview", overview),
     ("Tags", tags),
+    ("Signal groups", signals),
 )
 
 

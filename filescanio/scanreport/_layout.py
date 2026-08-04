@@ -53,3 +53,18 @@ def pairs(found: list[tuple[str, str]]) -> list[str]:
 def heading(title: str) -> list[str]:
     """A section title with its underline."""
     return [title, "=" * len(title)]
+
+
+def indent(lines: list[str]) -> list[str]:
+    """The lines shifted one level right."""
+    return ["  " + line for line in lines]
+
+
+def squeeze(value: str) -> str:
+    """The text with every whitespace run collapsed to one space."""
+    return " ".join(value.split())
+
+
+def titled(value: str) -> str:
+    """An identifier like static_analysis as words: Static Analysis."""
+    return " ".join(word.capitalize() for word in value.split("_"))

@@ -45,8 +45,34 @@ def test_tags_are_joined_and_nameless_tags_dropped() -> None:
 
 def test_headings_appear_in_report_order() -> None:
     rendered = render_report(FULL_REPORT)
-    positions = [rendered.index(title) for title in ("Overview", "Tags")]
+    titles = ("Overview", "Tags", "Signal groups")
+    positions = [rendered.index(title) for title in titles]
     assert positions == sorted(positions)
+
+
+def test_signal_groups_come_most_threatening_first() -> None:
+    rendered = render_report(FULL_REPORT)
+    strong = rendered.index("Writes to another process [malicious]")
+    weak = rendered.index("Contains long flat data streams [informational]")
+    assert strong < weak
+
+
+def test_signal_group_facts_are_indented_under_it() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert re.search(line("  Tags", "injection"), rendered, re.MULTILINE)
+    assert re.search(
+        line(
+            "  MITRE",
+            "Defense Evasion / Process Injection, Obfuscated Files or Information",
+        ),
+        rendered,
+        re.MULTILINE,
+    )
+    assert re.search(
+        line("  Signals", "Opens a remote process / Static Analysis"),
+        rendered,
+        re.MULTILINE,
+    )
 
 
 def test_no_trailing_whitespace() -> None:
