@@ -168,6 +168,7 @@ SIMPLE_CASES = [
     (("system", "mbc"), "/api/system/mbc"),
     (("system", "reputation-config"), "/api/system/reputation/check-config"),
     (("system", "news"), "/api/system/news"),
+    (("users", "uploads"), "/api/users/uploads"),
     (("users", "ioc-stats"), "/api/users/stat/iocs"),
     (("users", "tags"), "/api/users/get-frequent-tags"),
     (("users", "interesting"), "/api/users/most-interesting"),

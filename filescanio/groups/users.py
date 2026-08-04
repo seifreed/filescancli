@@ -14,6 +14,14 @@ class UsersGroup(ApiGroup):
             "GET", f"/api/users/{segment(account_id)}/avatar"
         )
 
+    def uploads(self) -> Any:
+        """Return the account's own submissions.
+
+        Absent from openapi.json, which defines UserUploadsResponse but
+        references it from no path. The official client uses this endpoint.
+        """
+        return self._transport.request_json("GET", "/api/users/uploads")
+
     def ioc_stats(self) -> Any:
         """Return the user's IOC statistics."""
         return self._transport.request_json("GET", "/api/users/stat/iocs")

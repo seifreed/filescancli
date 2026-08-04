@@ -313,6 +313,10 @@ def _handle_log_error(client: FileScanClient, args: argparse.Namespace) -> Any:
     return client.system.log_error(_read_json_argument(args.file))
 
 
+def _handle_report_download(client: FileScanClient, args: argparse.Namespace) -> Any:
+    return client.reports.download(args.report_id)
+
+
 def _handle_avatar(client: FileScanClient, args: argparse.Namespace) -> Any:
     return client.users.avatar(args.account_id)
 
@@ -372,6 +376,7 @@ SIMPLE_COMMANDS: dict[tuple[str, str], tuple[Callable[[FileScanClient], Any], st
         "Get reputation check config",
     ),
     ("system", "news"): (lambda c: c.system.news(), "Get news items"),
+    ("users", "uploads"): (lambda c: c.users.uploads(), "List your own uploads"),
     ("users", "ioc-stats"): (lambda c: c.users.ioc_stats(), "Get IOC statistics"),
     ("users", "tags"): (lambda c: c.users.frequent_tags(), "Get frequent tags"),
     ("users", "interesting"): (
@@ -493,6 +498,12 @@ def build_parser() -> argparse.ArgumentParser:
     scan_report.add_argument("flow_id")
     _add_report_view_options(scan_report)
     scan_report.set_defaults(handler=_handle_scan_report)
+
+    report_download = _subparser(
+        commands, "report-download", help="Download a full report (undocumented API)"
+    )
+    report_download.add_argument("report_id")
+    report_download.set_defaults(handler=_handle_report_download)
 
     report = _subparser(commands, "report", help="Get a specific report")
     report.add_argument("report_id")

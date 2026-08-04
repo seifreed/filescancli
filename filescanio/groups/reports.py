@@ -61,6 +61,16 @@ class ReportsGroup(ApiGroup):
             json_body={"reports_ids": reports_ids},
         )
 
+    def download(self, report_id: str) -> bytes:
+        """Return the full report as the server serialises it.
+
+        Absent from openapi.json: the official client uses it, so the
+        endpoint is real but undocumented. Do not delete it as unreachable.
+        """
+        return self._transport.request_bytes(
+            "GET", f"/api/reports/{segment(report_id)}/download"
+        )
+
     def public(
         self,
         *,

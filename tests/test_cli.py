@@ -1084,3 +1084,10 @@ def test_invalid_max_retries_rejected(api_server: str, value: str) -> None:
     with pytest.raises(SystemExit) as excinfo:
         run(api_server, "--max-retries", value, "system", "info")
     assert excinfo.value.code == 2
+
+
+def test_report_download_returns_raw_bytes(
+    api_server: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    echo = run_echo(api_server, capsys, "report-download", "r1")
+    assert echo["path"] == "/api/reports/r1/download"
