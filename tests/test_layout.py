@@ -9,6 +9,7 @@ from filescanio.scanreport._layout import (
     flag,
     heading,
     human_size,
+    identifier,
     joined,
     pairs,
     percent,
@@ -99,6 +100,19 @@ def test_size(value: Any, expected: str | None) -> None:
 )
 def test_scalar_items(value: Any, expected: list[tuple[str, str]]) -> None:
     assert scalar_items(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("static_analysis", "Static Analysis"),
+        ("osint", "Osint"),
+        (None, None),
+        (3, "3"),
+    ],
+)
+def test_identifier(value: Any, expected: str | None) -> None:
+    assert identifier(value) == expected
 
 
 FIELDS = (

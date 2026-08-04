@@ -114,3 +114,9 @@ def squeeze(value: str) -> str:
 def titled(value: str) -> str:
     """An identifier like static_analysis as words: Static Analysis."""
     return " ".join(word.capitalize() for word in value.split("_"))
+
+
+def identifier(value: Any) -> str | None:
+    """An identifier-style value as words, or None."""
+    shown = text(value)
+    return None if shown is None else titled(shown)

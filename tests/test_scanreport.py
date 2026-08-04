@@ -57,6 +57,8 @@ def test_headings_appear_in_report_order() -> None:
         "YARA matches",
         "Interesting strings",
         "Extracted files",
+        "OSINT",
+        "Geolocation",
     )
     positions = [rendered.index(title) for title in titles]
     assert positions == sorted(positions)
@@ -168,6 +170,25 @@ def test_extracted_files_show_facts_digests_and_metadata() -> None:
     assert re.search(line("  Tags", "dropped"), rendered, re.MULTILINE)
     assert re.search(line("  SHA-256", "f" * 64), rendered, re.MULTILINE)
     assert re.search(line("  entropy", "7.9"), rendered, re.MULTILINE)
+
+
+def test_osint_shows_verdict_and_provider_data_without_echoes() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert re.search(line("  Type", "URL"), rendered, re.MULTILINE)
+    assert re.search(line("  Provider", "Virustotal"), rendered, re.MULTILINE)
+    assert re.search(line("  Verdict", "malicious"), rendered, re.MULTILINE)
+    assert re.search(line("  Tags", "c2"), rendered, re.MULTILINE)
+    assert re.search(line("  positives", "42"), rendered, re.MULTILINE)
+    assert "response_code" not in rendered
+
+
+def test_geolocation_places_each_resolved_address() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert "198.51.100.7" in rendered
+    assert re.search(line("  Domain", "evil.example"), rendered, re.MULTILINE)
+    assert re.search(line("  Country", "Netherlands"), rendered, re.MULTILINE)
+    assert re.search(line("  ASN", "64500"), rendered, re.MULTILINE)
+    assert re.search(line("  Latitude", "52.37"), rendered, re.MULTILINE)
 
 
 def test_no_trailing_whitespace() -> None:
