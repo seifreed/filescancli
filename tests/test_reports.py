@@ -4,13 +4,14 @@ import itertools
 import json
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
+from http.server import BaseHTTPRequestHandler
 from typing import Any
 
 import pytest
 
 from filescanio.client import FileScanClient
 from filescanio.groups._base import PAGE_CEILING
-from filescanio.groups.reports import ReportsGroup
+from filescanio.groups.reports import ReportsGroup, SearchFields
 from filescanio.http import Transport
 from tests.conftest import assert_get, json_server
 
@@ -79,6 +80,52 @@ def test_only_the_supplied_options_become_query_parameters(
     query: dict[str, list[str]],
 ) -> None:
     assert_get(call(client), path, query)
+
+
+ALL_SEARCH_FIELDS = SearchFields(
+    filename="a.exe",
+    filetype="peexe",
+    media_type="application/x-msdownload",
+    verdict="malicious",
+    tag="botnet",
+    date_from="2026-01-01",
+    date_to="2026-02-01",
+    domain="evil.example",
+    ip="198.51.100.7",
+    url="http://evil.example",
+    uuid="u-1",
+    email="a@evil.example",
+    reg_path="HKLM\\Run",
+    rev_id="rev-1",
+    sha1="1" * 40,
+    sha256="2" * 64,
+    sha512="3" * 128,
+    md5="4" * 32,
+    imphash="5" * 32,
+    ssdeep="3:abc:xyz",
+    fuzzyfsiohash="fz-1",
+    authentihash="6" * 64,
+    yara_rule="win_mirai",
+    age=7,
+)
+
+
+def test_search_forwards_every_field_filter(client: FileScanClient) -> None:
+    echo = client.reports.search("q", **ALL_SEARCH_FIELDS)
+    expected = {name: [str(value)] for name, value in ALL_SEARCH_FIELDS.items()}
+    assert_get(echo, "/api/reports/search", {"query": ["q"], **expected})
+
+
+def test_search_pages_forwards_the_field_filters() -> None:
+    seen: list[str] = []
+
+    def respond(handler: BaseHTTPRequestHandler) -> tuple[int, bytes]:
+        seen.append(handler.path)
+        return (200, b'{"items": [], "count": 0}')
+
+    with paging(json_server(respond)) as reports:
+        assert list(reports.search_pages("q", page_size=5, verdict="malicious")) == []
+    assert "verdict=malicious" in seen[0]
 
 
 def test_search_matches(client: FileScanClient) -> None:

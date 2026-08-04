@@ -224,6 +224,35 @@ REQUEST_CASES = [
         id="search defaults",
     ),
     pytest.param(
+        (
+            "search",
+            "mirai",
+            "--verdict",
+            "malicious",
+            "--filetype",
+            "peexe",
+            "--sha256",
+            "c" * 64,
+            "--yara-rule",
+            "win_mirai",
+            "--age",
+            "7",
+        ),
+        {
+            "method": "GET",
+            "path": "/api/reports/search",
+            "query": {
+                "query": ["mirai"],
+                "verdict": ["malicious"],
+                "filetype": ["peexe"],
+                "sha256": ["c" * 64],
+                "yara_rule": ["win_mirai"],
+                "age": ["7"],
+            },
+        },
+        id="search by fields",
+    ),
+    pytest.param(
         ("reports", "public", "--page", "1", "--page-size", "5"),
         {
             "method": "GET",

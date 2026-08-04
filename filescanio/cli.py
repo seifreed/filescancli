@@ -25,6 +25,7 @@ from filescanio.errors import (
     describe,
 )
 from filescanio.groups._base import ReportView
+from filescanio.groups.reports import SearchFields
 from filescanio.groups.scan import DEFAULT_WORKERS, ScanOptions
 from filescanio.render import Format, render, render_json
 from filescanio.transport import (
@@ -39,6 +40,42 @@ from filescanio.transport import (
 
 ClientHandler = Callable[[FileScanClient, argparse.Namespace], Any]
 LocalHandler = Callable[[argparse.Namespace], Any]
+
+# Search field filters that take free text; the wire name is the flag name
+# with dashes turned into underscores.
+SEARCH_TEXT_FLAGS = (
+    "--filename",
+    "--filetype",
+    "--media-type",
+    "--tag",
+    "--date-from",
+    "--date-to",
+    "--domain",
+    "--ip",
+    "--url",
+    "--uuid",
+    "--email",
+    "--reg-path",
+    "--rev-id",
+    "--sha1",
+    "--sha256",
+    "--sha512",
+    "--md5",
+    "--imphash",
+    "--ssdeep",
+    "--fuzzyfsiohash",
+    "--authentihash",
+    "--yara-rule",
+)
+
+VERDICTS = (
+    "benign",
+    "informational",
+    "suspicious",
+    "likely_malicious",
+    "malicious",
+    "unknown",
+)
 
 
 def _parse_filters(pairs: list[str] | None) -> dict[str, QueryValue]:
@@ -230,8 +267,42 @@ def _handle_report(client: FileScanClient, args: argparse.Namespace) -> Any:
     return client.reports.get(args.report_id, args.file_hash, **_report_view(args))
 
 
+def _search_fields(args: argparse.Namespace) -> SearchFields:
+    return SearchFields(
+        filename=args.filename,
+        filetype=args.filetype,
+        media_type=args.media_type,
+        verdict=args.verdict,
+        tag=args.tag,
+        date_from=args.date_from,
+        date_to=args.date_to,
+        domain=args.domain,
+        ip=args.ip,
+        url=args.url,
+        uuid=args.uuid,
+        email=args.email,
+        reg_path=args.reg_path,
+        rev_id=args.rev_id,
+        sha1=args.sha1,
+        sha256=args.sha256,
+        sha512=args.sha512,
+        md5=args.md5,
+        imphash=args.imphash,
+        ssdeep=args.ssdeep,
+        fuzzyfsiohash=args.fuzzyfsiohash,
+        authentihash=args.authentihash,
+        yara_rule=args.yara_rule,
+        age=args.age,
+    )
+
+
 def _handle_search(client: FileScanClient, args: argparse.Namespace) -> Any:
-    return client.reports.search(args.query, page=args.page, page_size=args.page_size)
+    return client.reports.search(
+        args.query,
+        page=args.page,
+        page_size=args.page_size,
+        **_search_fields(args),
+    )
 
 
 def _handle_matches(client: FileScanClient, args: argparse.Namespace) -> Any:
@@ -546,6 +617,10 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("query", nargs="?")
     search.add_argument("--page", type=int)
     search.add_argument("--page-size", type=int, choices=(5, 10, 20))
+    for flag in SEARCH_TEXT_FLAGS:
+        search.add_argument(flag)
+    search.add_argument("--verdict", choices=VERDICTS)
+    search.add_argument("--age", type=int, help="Only reports newer than this in days")
     search.set_defaults(handler=_handle_search)
 
     reports = _subparser(commands, "reports", help="Report collections")

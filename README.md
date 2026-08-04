@@ -125,7 +125,7 @@ filescan scan file sample.bin --tags "malware|test" --wait --wait-timeout 1800
 filescan scan url https://example.com --wait
 filescan scan report <flow_id>
 filescan report <report_id> <sha256> --filter general --filter allSignalGroups
-filescan search "mirai" --page-size 10       # query-only; use 'reports matches' for field filters
+filescan search "mirai" --verdict malicious --filetype peexe --age 7
 filescan reports public --page 1
 filescan reports matches <report_id> --filter verdict=malicious
 filescan report-download <report_id> --as pdf -o report.pdf   # misp|stix|html|pdf
@@ -151,7 +151,7 @@ filescan misc openapi|sitemap
 |---------|-------------|
 | `filescan scan` | Submit files or URLs, fetch and poll flow reports |
 | `filescan report` | A single report by report ID and file hash |
-| `filescan search` / `reports` | Free-text search, public listings, match filters |
+| `filescan search` / `reports` | Search by text or by field (verdict, hashes, IOCs, YARA rule, age...), public listings, match filters |
 | `filescan files` | Hash availability, sample download |
 | `filescan reputation` | Hash and IOC reputation, bulk when several values are given |
 | `filescan threatintel` | IOC prevalence and special-hash similarity |
