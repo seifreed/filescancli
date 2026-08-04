@@ -20,8 +20,8 @@ FULL_REPORT: dict[str, Any] = {
                 "confidence": 0.95,
             },
             "allTags": [
-                {"source": "MEDIA_TYPE", "isRootTag": True, "tag": {"name": "peexe"}},
                 {"source": "SIGNAL", "tag": {"name": "trojan"}},
+                {"source": "MEDIA_TYPE", "isRootTag": True, "tag": {"name": "peexe"}},
                 {"source": "SIGNAL", "tag": {}},
             ],
             "allSignalGroups": [
@@ -183,3 +183,26 @@ FULL_REPORT: dict[str, Any] = {
 }
 
 BARE_REPORT: dict[str, Any] = {"reports": {"x": {"resources": {}}}}
+
+
+def typed_report(tag: str, resource: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "reports": {
+            "r": {
+                "allTags": [
+                    {"source": "MEDIA_TYPE", "isRootTag": True, "tag": {"name": tag}}
+                ],
+                "resources": {"f": {"resourceReference": {"name": "file"}, **resource}},
+            }
+        }
+    }
+
+
+TYPED_REPORTS: dict[str, dict[str, Any]] = {
+    "pe": typed_report("peexe", {"extendedData": {"architecture": "x86"}}),
+    "elf": typed_report("elf", {"fileSize": 100}),
+    "pdf": typed_report("pdf", {"extendedData": {"author": "Mallory"}}),
+    "office": typed_report("docm", {"extendedData": {"vbaStomping": True}}),
+    "lnk": typed_report("lnk", {"fileSize": 0}),
+    "mbox": typed_report("mbox", {"metaData": {"Subject": "invoice"}}),
+}

@@ -4,7 +4,19 @@ from typing import Any
 
 import pytest
 
-from filescanio.scanreport._layout import Field, heading, pairs, percent, rows, text
+from filescanio.scanreport._layout import (
+    Field,
+    flag,
+    heading,
+    human_size,
+    joined,
+    pairs,
+    percent,
+    rows,
+    scalar_items,
+    size,
+    text,
+)
 
 
 @pytest.mark.parametrize(
@@ -31,6 +43,62 @@ def test_text(value: Any, expected: str | None) -> None:
 )
 def test_percent(value: Any, expected: str | None) -> None:
     assert percent(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(True, "yes"), (False, "no"), (1, None), ("yes", None), (None, None)],
+)
+def test_flag(value: Any, expected: str | None) -> None:
+    assert flag(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (["a", "b"], "a, b"),
+        (["a", None, {"x": 1}], "a"),
+        ([], None),
+        ("text", None),
+        (None, None),
+    ],
+)
+def test_joined(value: Any, expected: str | None) -> None:
+    assert joined(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (0, "0 B"),
+        (1023, "1023 B"),
+        (1024, "1 KiB"),
+        (1536, "1.5 KiB"),
+        (1024**4, "1 TiB"),
+    ],
+)
+def test_human_size(value: int, expected: str) -> None:
+    assert human_size(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(2048, "2 KiB"), (0, "0 B"), (-1, None), (True, None), ("big", None)],
+)
+def test_size(value: Any, expected: str | None) -> None:
+    assert size(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ({"MD5": "x", "raw": [1]}, [("MD5", "x")]),
+        ({}, []),
+        ("junk", []),
+    ],
+)
+def test_scalar_items(value: Any, expected: list[tuple[str, str]]) -> None:
+    assert scalar_items(value) == expected
 
 
 FIELDS = (

@@ -6,7 +6,7 @@ import pytest
 
 from filescanio.errors import Unrepresentable
 from filescanio.scanreport import render_report
-from tests.reportdata import BARE_REPORT, FULL_REPORT
+from tests.reportdata import BARE_REPORT, FULL_REPORT, TYPED_REPORTS
 
 
 def line(label: str, value: str) -> str:
@@ -40,12 +40,12 @@ def test_overview_shows_the_verdict_and_submission_facts() -> None:
 
 def test_tags_are_joined_and_nameless_tags_dropped() -> None:
     rendered = render_report(FULL_REPORT)
-    assert re.search(line("Tags", "peexe, trojan"), rendered, re.MULTILINE)
+    assert re.search(line("Tags", "trojan, peexe"), rendered, re.MULTILINE)
 
 
 def test_headings_appear_in_report_order() -> None:
     rendered = render_report(FULL_REPORT)
-    titles = ("Overview", "Tags", "Signal groups")
+    titles = ("Overview", "Tags", "Signal groups", "File details")
     positions = [rendered.index(title) for title in titles]
     assert positions == sorted(positions)
 
@@ -73,6 +73,36 @@ def test_signal_group_facts_are_indented_under_it() -> None:
         rendered,
         re.MULTILINE,
     )
+
+
+def test_file_details_cover_magic_size_digests_and_pe_facts() -> None:
+    rendered = render_report(FULL_REPORT)
+    assert re.search(
+        line("Description", "PE32 executable (GUI) Intel 80386"), rendered, re.MULTILINE
+    )
+    assert re.search(line("Size", "4 KiB"), rendered, re.MULTILINE)
+    assert re.search(line("MD5", "b" * 32), rendered, re.MULTILINE)
+    assert re.search(line("Imphash", "c" * 32), rendered, re.MULTILINE)
+    assert re.search(line("Packers", "UPX"), rendered, re.MULTILINE)
+    assert re.search(line("Signed", "no"), rendered, re.MULTILINE)
+    assert re.search(line("Packed", "yes"), rendered, re.MULTILINE)
+    assert re.search(line("Compiled", "2020-01-01T00:00:00Z"), rendered, re.MULTILINE)
+
+
+@pytest.mark.parametrize(
+    ("kind", "label", "value"),
+    [
+        ("pe", "Architecture", "x86"),
+        ("elf", "Size", "100 B"),
+        ("pdf", "Author", "Mallory"),
+        ("office", "VBA stomping", "yes"),
+        ("lnk", "Size", "0 B"),
+        ("mbox", "Subject", "invoice"),
+    ],
+)
+def test_each_file_kind_shows_its_own_fields(kind: str, label: str, value: str) -> None:
+    rendered = render_report(TYPED_REPORTS[kind])
+    assert re.search(line(label, value), rendered, re.MULTILINE)
 
 
 def test_no_trailing_whitespace() -> None:

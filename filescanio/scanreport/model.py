@@ -6,6 +6,7 @@ both ask the same questions of the same loosely-typed payload.
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 from filescanio.scanreport._access import at, mapping, numeric, records
@@ -41,6 +42,18 @@ def verdict_of(report: Mapping[str, Any]) -> str:
 def threat_level(report: Mapping[str, Any]) -> float | None:
     """The threat level, when the server sent a usable number."""
     return numeric(at(report, "finalVerdict", "threatLevel"))
+
+
+class FileKind(StrEnum):
+    """A family of file types that shares a details layout."""
+
+    PE = "pe"
+    ELF = "elf"
+    PDF = "pdf"
+    OFFICE = "office"
+    LNK = "lnk"
+    MBOX = "mbox"
+    OTHER = "other"
 
 
 @dataclass(frozen=True, slots=True)

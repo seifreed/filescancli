@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from filescanio.scanreport._access import at, numeric
+from filescanio.scanreport._access import at, mapping, numeric, sequence
 
 
 def text(value: Any) -> str | None:
@@ -24,6 +24,37 @@ def percent(value: Any) -> str | None:
     """A 0..1 fraction as a whole percentage, or None."""
     number = numeric(value)
     return None if number is None else f"{round(number * 100)}%"
+
+
+def flag(value: Any) -> str | None:
+    """A boolean as yes/no, or None."""
+    if not isinstance(value, bool):
+        return None
+    return "yes" if value else "no"
+
+
+def joined(value: Any) -> str | None:
+    """The scalar elements of a list, joined, or None."""
+    parts = [part for item in sequence(value) if (part := text(item))]
+    return ", ".join(parts) or None
+
+
+def human_size(value: int) -> str:
+    """A byte count in the largest unit that keeps it readable."""
+    amount, unit = float(value), "B"
+    for larger in ("KiB", "MiB", "GiB", "TiB"):
+        if amount < 1024:
+            break
+        amount, unit = amount / 1024, larger
+    shown = f"{amount:.1f}".removesuffix(".0")
+    return f"{shown} {unit}"
+
+
+def size(value: Any) -> str | None:
+    """A byte count as human-readable text, or None."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return human_size(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +72,15 @@ def rows(node: Any, fields: tuple[Field, ...]) -> list[tuple[str, str]]:
         (entry.label, value)
         for entry in fields
         if (value := entry.fmt(at(node, *entry.path))) is not None
+    ]
+
+
+def scalar_items(node: Any) -> list[tuple[str, str]]:
+    """Every representable entry of a mapping as label/value rows."""
+    return [
+        (str(key), shown)
+        for key, item in mapping(node).items()
+        if (shown := text(item)) is not None
     ]
 
 
