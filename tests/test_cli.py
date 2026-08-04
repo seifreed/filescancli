@@ -1122,6 +1122,14 @@ def test_invalid_max_retries_rejected(api_server: str, value: str) -> None:
     assert excinfo.value.code == 2
 
 
+def test_search_rejects_a_filetype_the_platform_does_not_index(
+    api_server: str,
+) -> None:
+    with pytest.raises(SystemExit) as excinfo:
+        run(api_server, "search", "--filetype", "nope")
+    assert excinfo.value.code == 2
+
+
 REPORTISH = json.dumps(
     {"reports": {"x": {"finalVerdict": {"verdict": "MALICIOUS"}, "resources": {}}}}
 ).encode()

@@ -46,7 +46,6 @@ LocalHandler = Callable[[argparse.Namespace], Any]
 # with dashes turned into underscores.
 SEARCH_TEXT_FLAGS = (
     "--filename",
-    "--filetype",
     "--media-type",
     "--tag",
     "--date-from",
@@ -76,6 +75,67 @@ VERDICTS = (
     "likely_malicious",
     "malicious",
     "unknown",
+)
+
+# The file types the platform indexes, verbatim from the official client —
+# including its "mthml" spelling, which is what travels on the wire.
+FILE_TYPES = (
+    "64bits",
+    "apk",
+    "bat",
+    "bmp",
+    "csv",
+    "doc",
+    "docm",
+    "docx",
+    "dot",
+    "dotm",
+    "dotx",
+    "eml",
+    "elf",
+    "gif",
+    "hta",
+    "htm",
+    "html",
+    "img",
+    "java",
+    "java-bytecode",
+    "javascript",
+    "jpg",
+    "lnk",
+    "mbox",
+    "mthml",
+    "msg",
+    "msi",
+    "mso",
+    "ole",
+    "pdf",
+    "pedll",
+    "peexe",
+    "png",
+    "ppt",
+    "pptm",
+    "pptx",
+    "pot",
+    "potm",
+    "potx",
+    "ps",
+    "pub",
+    "powershell",
+    "rfc822",
+    "rtf",
+    "svg",
+    "txt",
+    "vbs",
+    "wsf",
+    "xls",
+    "xlsm",
+    "xlsb",
+    "xlsx",
+    "xlt",
+    "xltm",
+    "xltx",
+    "xsl",
 )
 
 
@@ -620,6 +680,7 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--page-size", type=int, choices=(5, 10, 20))
     for flag in SEARCH_TEXT_FLAGS:
         search.add_argument(flag)
+    search.add_argument("--filetype", choices=FILE_TYPES, metavar="TYPE")
     search.add_argument("--verdict", choices=VERDICTS)
     search.add_argument("--age", type=int, help="Only reports newer than this in days")
     search.set_defaults(handler=_handle_search)

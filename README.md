@@ -125,7 +125,7 @@ filescan scan file sample.bin --tags "malware|test" --wait --wait-timeout 1800
 filescan scan url https://example.com --wait
 filescan scan report <flow_id>
 filescan report <report_id> <sha256> --filter general --filter allSignalGroups
-filescan search "mirai" --verdict malicious --filetype peexe --age 7
+filescan search "mirai" --verdict malicious --filetype peexe --age 7  # --filetype validates against the platform's type list
 filescan reports public --page 1
 filescan reports matches <report_id> --filter verdict=malicious
 filescan report-download <report_id> --as pdf -o report.pdf   # misp|stix|html|pdf
