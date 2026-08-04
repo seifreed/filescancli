@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "filescancli"
+version = "0.1.0"
+description = "CLI and client library for the filescan.io API"
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [{ name = "Marc Rivero" }]
+dependencies = ["httpx>=0.28", "prettytable>=3.18"]
+
+# Development tooling lives in this same file, never in a separate
+# requirements file; it must not be installed into a consumer's environment.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "black>=25.1",
+    "ruff>=0.12",
+    "mypy>=1.16",
+    "bandit>=1.8",
+    "pip-audit>=2.9",
+]
+
+[project.scripts]
+filescan = "filescanio.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/seifreed/filescancli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["filescanio"]
+
+[tool.black]
+target-version = ["py314"]
+
+[tool.ruff]
+target-version = "py314"
+extend-exclude = ["venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "W"]
+
+[tool.mypy]
+strict = true
+python_version = "3.14"
+exclude = ["venv"]
+
+[tool.bandit]
+# Test code, where a bare assert is the point rather than a finding.
+exclude_dirs = ["venv", "tests", "smoke", "posix"]
+
+[tool.pytest.ini_options]
+# posix/ is collected but not measured: it holds the tests Windows has to skip,
+# and a skipped test counts as uncovered. smoke/ needs a real API key, so it is
+# not collected at all and runs on demand with `pytest smoke`.
+testpaths = ["tests", "posix"]
+addopts = """
+    --cov=filescanio --cov=tests
+    --cov-report=term-missing --cov-fail-under=100
+"""
+
+[tool.coverage.run]
+branch = true

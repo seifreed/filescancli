@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+dist/
+build/
+*.egg-info/
+.coverage
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+endpoints.md
+openapi.json
+CLAUDE.md
+.claude/

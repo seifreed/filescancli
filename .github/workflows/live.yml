@@ -1,0 +1,34 @@
+# Checks the client against the real API, which the push and pull-request
+# gates deliberately never touch: a third-party outage should not turn a pull
+# request red. Needs the FILESCANIO repository secret. No value is ever
+# interpolated into a run: block, so nothing can leak into the command line.
+name: Live API
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install package and dependencies
+        run: pip install -e ".[dev]"
+      - name: Require the API key
+        env:
+          FILESCANIO: ${{ secrets.FILESCANIO }}
+        run: |
+          test -n "$FILESCANIO" || {
+            echo "::error::Set the FILESCANIO repository secret to run these checks"
+            exit 1
+          }
+      - name: Live checks
+        env:
+          FILESCANIO: ${{ secrets.FILESCANIO }}
+        run: pytest smoke --no-cov
