@@ -86,6 +86,9 @@ filescan reputation hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991
 
 # Export a scan report as SARIF
 filescan report <report_id> <sha256> --filter allSignalGroups --format sarif -o out.sarif
+
+# Read a scan report as a human
+filescan report <report_id> <sha256> --filter f:all --format report
 ```
 
 ---
@@ -167,6 +170,7 @@ redirected, so `filescan system info` is readable and
 | `json` | Pretty-printed; `--raw` puts it on one line. Default when piped or with `-o`. |
 | `toon` | [TOON](https://github.com/toon-format/spec) — compact, token-efficient, for LLM prompts. Encoding only, comma delimiter, two-space indent. |
 | `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/) for scan reports, so findings can be uploaded to code-scanning tools. |
+| `report` | A readable digest of a scan report: verdict, tags, signal groups, per-family file details (PE/ELF/PDF/Office/LNK/Mbox), emulation, IOCs, disassembly, YARA, notable strings, extracted files, OSINT and geolocation. Sections with nothing to say are omitted. |
 
 A format that cannot express a response falls back to JSON and says so on
 stderr — asking for a table of a nested scan report, or SARIF of

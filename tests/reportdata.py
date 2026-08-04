@@ -205,6 +205,34 @@ def typed_report(tag: str, resource: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+HOSTILE_REPORT: dict[str, Any] = {
+    "fileSize": "big",
+    "reports": {
+        "r": {
+            "file": "not-a-mapping",
+            "finalVerdict": {
+                "verdict": None,
+                "threatLevel": "high",
+                "confidence": "certain",
+            },
+            "allTags": "nope",
+            "allSignalGroups": [
+                {"description": 7, "verdict": []},
+                {"verdict": {"verdict": "MALICIOUS", "threatLevel": 0.5}},
+                "junk",
+            ],
+            "resources": [],
+        }
+    },
+}
+
+MULTI_REPORT: dict[str, Any] = {
+    "reports": [
+        {"file": {"name": "one.bin"}, "resources": {}},
+        {"file": {"name": "two.bin"}, "resources": {}},
+    ]
+}
+
 TYPED_REPORTS: dict[str, dict[str, Any]] = {
     "pe": typed_report("peexe", {"extendedData": {"architecture": "x86"}}),
     "elf": typed_report("elf", {"fileSize": 100}),

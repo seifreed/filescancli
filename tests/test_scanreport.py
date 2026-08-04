@@ -6,7 +6,13 @@ import pytest
 
 from filescanio.errors import Unrepresentable
 from filescanio.scanreport import render_report
-from tests.reportdata import BARE_REPORT, FULL_REPORT, TYPED_REPORTS
+from tests.reportdata import (
+    BARE_REPORT,
+    FULL_REPORT,
+    HOSTILE_REPORT,
+    MULTI_REPORT,
+    TYPED_REPORTS,
+)
 
 
 def line(label: str, value: str) -> str:
@@ -189,6 +195,26 @@ def test_geolocation_places_each_resolved_address() -> None:
     assert re.search(line("  Country", "Netherlands"), rendered, re.MULTILINE)
     assert re.search(line("  ASN", "64500"), rendered, re.MULTILINE)
     assert re.search(line("  Latitude", "52.37"), rendered, re.MULTILINE)
+
+
+def test_hostile_report_renders_instead_of_crashing() -> None:
+    rendered = render_report(HOSTILE_REPORT)
+    assert re.search(line("Verdict", "unknown"), rendered, re.MULTILINE)
+    assert "7 [unknown]" in rendered
+    assert "signal group [malicious]" in rendered
+    assert "IOCs" not in rendered
+
+
+def test_signal_group_without_threat_level_still_sorts() -> None:
+    rendered = render_report(HOSTILE_REPORT)
+    assert rendered.index("[malicious]") < rendered.index("7 [unknown]")
+
+
+def test_multi_report_renders_every_report_from_a_list() -> None:
+    rendered = render_report(MULTI_REPORT)
+    assert "one.bin" in rendered
+    assert "two.bin" in rendered
+    assert rendered.count("Overview") == 2
 
 
 def test_no_trailing_whitespace() -> None:
